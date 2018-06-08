@@ -1,0 +1,73 @@
+import com.winwin.common.router.annotation.Activity
+import com.winwin.common.router.annotation.RouterHandler
+import com.winwin.common.router.annotation.Task
+import spoon.Launcher
+import spoon.reflect.CtModel
+import spoon.reflect.code.CtExpression
+import spoon.reflect.declaration.CtAnnotation
+import spoon.reflect.declaration.CtElement
+import spoon.reflect.declaration.CtMethod
+
+buildscript {
+    repositories {
+        jcenter()
+        maven { url "http://10.100.5.132:8081/content/repositories/android-dev/" }
+        maven { url "http://10.100.5.132:8081/content/repositories/android-release/" }
+    }
+    dependencies {
+        classpath 'fr.inria.gforge.spoon:spoon-core:6.2.0'
+        classpath 'com.winwin.common:Router:1.4.5-SNAPSHOT'
+    }
+}
+
+def activityAnnotation = Activity.name
+def routerHandlerAnnotation = RouterHandler.name
+def taskAnnotation = Task.name
+
+ext {
+    routerProcessor = { File file ->
+        Launcher launcher = new Launcher()
+        launcher.addInputResource(file.path)
+        launcher.getEnvironment().setNoClasspath(true)
+        launcher.buildModel()
+        CtModel model = launcher.getModel()
+        model.allTypes.each {
+            if (!it.interface) {
+                return
+            }
+            it.getMethods().each {
+                CtMethod ctMethod = it
+                if (ctMethod.hasAnnotation(Activity) || ctMethod.hasAnnotation(Task) || ctMethod.hasAnnotation(RouterHandler)) {
+                    List<CtAnnotation> ctAnnotations = it.getAnnotations()
+                    for (int i = 0; i < ctAnnotations.size(); i++) {
+                        CtAnnotation ctAnnotation = ctAnnotations.get(i)
+                        switch (ctAnnotation.annotationType.qualifiedName) {
+                            case activityAnnotation:
+                            case routerHandlerAnnotation:
+                                CtExpression ctExpression = ctAnnotation.getValue("value")
+                                if (ctExpression != null) {
+                                    String className = ctExpression.toString()
+                                    className = className.substring(0, className.length() - 6)
+                                    ctAnnotation.addValue("name", className)
+                                    ctExpression.delete()
+                                }
+                                break
+                            case taskAnnotation:
+                                CtExpression ctExpression = ctAnnotation.getValue("value")
+                                List<CtElement> ctElements = ctExpression.getElements()
+                                String[] classNames = new String[ctElements.size()]
+                                for (int j = 0; j < ctElements.size(); j++) {
+                                    String className = ctElements.get(j).toString()
+                                    classNames[j] = className.substring(0, className.length() - 6)
+                                }
+                                ctAnnotation.addValue("names", classNames)
+                                ctExpression.delete()
+                                break
+                        }
+                    }
+                }
+            }
+            file.write("package ${it.package};\n\n${it.toString()}")
+        }
+    }
+}

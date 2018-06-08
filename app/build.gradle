@@ -1,0 +1,44 @@
+apply plugin: 'com.android.application'
+
+apply plugin: 'mis'
+
+android {
+    compileSdkVersion 27
+    defaultConfig {
+        minSdkVersion 14
+        targetSdkVersion 27
+        versionCode 1
+        versionName "1.0"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    implementation 'com.android.support:appcompat-v7:27.1.1'
+    implementation 'com.google.code.gson:gson:2.8.1'
+
+    implementation project(':mis-core') // implementation 'com.eastwood.common:mis:1.0.0'
+
+//    implementation 'com.eastwood.demo:app-sdk:1.0.0'
+}
+
+apply from: './router-processor.gradle'
+
+uploadMis {
+
+    main {
+        groupId = 'com.eastwood.demo'
+        artifactId = 'app-sdk'
+        version = '1.0.0'
+
+        sourceFilters = [routerProcessor]
+
+        dependencies = ['com.google.code.gson:gson:2.8.1']
+    }
+
+}

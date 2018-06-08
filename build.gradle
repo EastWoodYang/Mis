@@ -1,0 +1,43 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+
+    repositories {
+        google()
+        jcenter()
+        mavenCentral()
+        maven { url "http://10.100.5.132:8081/content/repositories/android-dev/" }
+        maven { url "http://10.100.5.132:8081/content/repositories/android-release/" }
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:3.1.2'
+
+        // micro-module
+        classpath 'com.eastwood.tools.plugins:micro-module:1.0.0'
+        // mis
+        classpath 'com.eastwood.tools.plugins:mis:1.0.0'
+
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+allprojects {
+    repositories {
+        jcenter()
+        google()
+    }
+
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+
+apply plugin: 'mis-maven'
+misMaven {
+    url = "http://nexus.yingyingwork.com"
+    repository = "android-release"
+    username = "android"
+    password = "123456"
+}
