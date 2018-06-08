@@ -27,13 +27,15 @@ apply plugin: 'mis'
 
 #### 创建 mis 目录
 在**src/main/java** 同级目录，创建**mis**文件夹
+ 
 <img src='https://github.com/EastWoodYang/Mis/blob/master/picture/1.png'/>
-
+ 
 
 ## 定义接口和Model，以及实现和注册
 直接在**mis**文件夹下，创建对应的包名、接口类和Model。并在**java**文件夹下，实现对应的接口类。
+ 
 <img src='https://github.com/EastWoodYang/Mis/blob/master/picture/2.png'/>
-
+ 
 #### 注册服务
 
 在模块build.gradle中添加mis库引用，例如：
@@ -116,8 +118,9 @@ apply plugin: 'mis'
 
 #### 执行上传
 打开Gradle Tasks View，在对应项目中，双击 Tasks/upload/uploadMis(_项目名称)，将执行上传mis-sdk任务。
+ 
 <img src='https://github.com/EastWoodYang/Mis/blob/master/picture/3.png'/>
-
+ 
 
 上传成功成功后，在模块build.gradle中添加aar引用，例如：
          
