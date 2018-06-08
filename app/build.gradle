@@ -27,16 +27,12 @@ dependencies {
 //    implementation 'com.eastwood.demo:app-sdk:1.0.0'
 }
 
-apply from: './router-processor.gradle'
-
 uploadMis {
 
     main {
         groupId = 'com.eastwood.demo'
         artifactId = 'app-sdk'
         version = '1.0.0'
-
-        sourceFilters = [routerProcessor]
 
         dependencies = ['com.google.code.gson:gson:2.8.1']
     }
