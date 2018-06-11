@@ -16,6 +16,11 @@ class MisPlugin implements Plugin<Project> {
         NamedDomainObjectContainer<MisUploadConfig> uploadConfigContainer = project.container(MisUploadConfig)
         project.extensions.add('uploadMis', uploadConfigContainer)
 
+        project.dependencies.metaClass.misProvider { path ->
+
+            return []
+        }
+
         project.afterEvaluate {
 
             setMisDir(project)
