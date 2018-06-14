@@ -52,7 +52,7 @@ apply plugin: 'mis'
     MisService.register(ILibraryService.class, LibraryService.class);
 
 
-## 打包Mis并上传
+## 上传Maven
 
 #### 配置 Maven
 在根项目的 build.gradle 或 模块 build.gradle 中添加配置：
