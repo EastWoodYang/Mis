@@ -21,6 +21,7 @@ android {
 
 }
 
+// need above dependencies
 microModule {
 
     include ':p_common'
