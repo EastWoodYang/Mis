@@ -10,8 +10,6 @@ buildscript {
     dependencies {
         classpath 'com.android.tools.build:gradle:3.0.1'
 
-        // micro-module
-        classpath 'com.eastwood.tools.plugins:micro-module:1.0.0'
         // mis
         classpath 'com.eastwood.tools.plugins:mis:1.0.0'
 
@@ -21,6 +19,7 @@ buildscript {
 }
 
 allprojects {
+
     repositories {
         jcenter()
         google()

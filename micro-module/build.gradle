@@ -2,7 +2,6 @@ apply plugin: 'micro-module'
 apply plugin: 'com.android.library'
 apply plugin: 'mis'
 
-
 android {
     compileSdkVersion 25
 
@@ -22,33 +21,14 @@ android {
 
 }
 
-dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
-//    implementation 'com.eastwood.demo:micromodule-main-sdk:1.0.0'
-//    implementation 'com.eastwood.demo:micromodule-common-sdk:1.0.0'
-}
-
 microModule {
 
     include ':p_common'
 
 }
 
-uploadMis {
-
-    main {
-        groupId = 'com.eastwood.demo'
-        artifactId = 'micromodule-main-sdk'
-        version = '1.0.0'
-    }
-
-    p_common {
-        groupId = 'com.eastwood.demo'
-        artifactId = 'micromodule-main-sdk'
-        version = '1.0.0'
-
-//        ignoreMicroModule = true
-
-    }
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation project(':mis-core')
 
 }

@@ -1,4 +1,5 @@
 apply plugin: 'com.android.library'
+apply plugin: 'mis'
 
 android {
     compileSdkVersion 25
@@ -21,8 +22,13 @@ android {
 
 dependencies {
 
-    implementation project(':mis-core') // implementation 'com.eastwood.common:mis:1.0.0'
+    implementation project(':mis-core') // or implementation 'com.eastwood.common:mis:1.0.0'
 
-//    implementation 'com.eastwood.demo:app-sdk:1.0.0'
+    implementation misSource(
+            group: 'com.eastwood.demo',
+            name: 'library-sdk',
+//            version: '1.0.0', // specify a version and upload to maven.
+            dependencies: ['com.google.code.gson:gson:2.8.1'] // compile need
+    )
 
 }

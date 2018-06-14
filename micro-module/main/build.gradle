@@ -2,8 +2,8 @@ dependencies {
 //    implementation microModule(':you-created-micro-module-name')
 
     implementation misSource(
-            microModuleName: 'p_common',
+            microModuleName: 'main',
             group: 'com.eastwood.demo',
-            name: 'module-common-sdk'
+            name: 'module-main-sdk'
     )
 }

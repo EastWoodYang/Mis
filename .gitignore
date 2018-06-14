@@ -31,5 +31,4 @@ captures/
 *.iml
 .idea
 
-# Keystore files
-*.jks
+micro-module/

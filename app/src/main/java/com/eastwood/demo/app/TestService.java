@@ -7,12 +7,8 @@ package com.eastwood.demo.app;
 public class TestService implements ITestService {
 
     @Override
-    public TestModel get() {
-        return null;
-    }
-
-    @Override
-    public void set(TestModel testModel) {
+    public void get() {
 
     }
+
 }

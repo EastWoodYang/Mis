@@ -20,21 +20,23 @@ android {
 
 dependencies {
     implementation 'com.android.support:appcompat-v7:25.1.1'
-    implementation 'com.google.code.gson:gson:2.8.1'
 
-    implementation project(':mis-core') // implementation 'com.eastwood.common:mis:1.0.0'
 
-//    implementation 'com.eastwood.demo:app-sdk:1.0.0'
-}
+    implementation project(':mis-core')
+    // or
+    // implementation 'com.eastwood.common:mis:1.0.0'
 
-uploadMis {
+    implementation project(':library')
+    implementation project(':micro-module')
 
-    main {
-        groupId = 'com.eastwood.demo'
-        artifactId = 'app-sdk'
-        version = '1.0.0'
 
-        dependencies = ['com.google.code.gson:gson:2.8.1']
-    }
+    // implementation library-sdk which provide by library module.
+    implementation misProvider('com.eastwood.demo:library-sdk')
+
+    // after library-sdk push to maven, you need specify a version.
+    // e.g.
+    // implementation misProvider('com.eastwood.demo:library-sdk-4:1.0.0')
+
+
 
 }

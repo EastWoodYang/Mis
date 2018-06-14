@@ -6,8 +6,6 @@ package com.eastwood.demo.app;
  */
 public interface ITestService {
 
-    TestModel get();
-
-    void set(TestModel testModel);
+    void get();
 
 }
