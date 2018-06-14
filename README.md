@@ -95,6 +95,19 @@ apply plugin: 'mis'
                     )
             }
 
+在[**MicroModule**](https://github.com/EastWoodYang/MicroModule)中的配置
+
+    dependencies {
+            implementation 'com.eastwood.common:mis:1.0.0'
+            
+            implementation misSource(
+                        group: 'com.eastwood.demo',
+                        name: 'library-sdk',
+                        version: '1.0.0',
+                        microModuleName: '**microModule name**',
+                        dependencies = ['com.google.code.gson:gson:2.8.1']
+            )
+    }
 
 #### 执行上传
 打开Gradle Tasks View，在对应项目中，双击 Tasks/upload/uploadMis(_项目名称)，将执行上传mis-sdk任务。
