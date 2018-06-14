@@ -1,8 +1,6 @@
 # Mis - Module interface service.
 模块接口服务
 
-
-
 ## 配置
 
 #### 添加 mis 插件
@@ -11,7 +9,7 @@
 ```
 buildscript {
     dependencies {
-        classpath 'com.eastwood.tools.plugins:mis:1.0.0'
+        classpath 'com.eastwood.tools.plugins:mis:1.0.1'
     }
 }
 ```
@@ -19,7 +17,7 @@ buildscript {
 在模块的build.gradle中添加**mis 插件**：
 ```
 apply plugin: 'com.android.application'
-
+ 
 // under plugin 'com.android.application'
 apply plugin: 'mis' 
 
@@ -41,17 +39,17 @@ apply plugin: 'mis'
 在模块build.gradle中添加mis库引用，例如：
 
     dependencies {
-        compile 'com.eastwood.common:mis:1.0.0'
+        implementation 'com.eastwood.common:mis:1.0.0'
     }
 
 
-通过**MisService**注册服务，使用 服务接口 + 服务接口的实现对象 **或** 服务接口的实现类 进行注册，例如：
+然后，通过**MisService**注册服务，使用 服务接口 + 服务接口的实现对象 **或** 服务接口的实现类 进行注册，例如：
 
     // 服务接口 + 服务接口的实现对象
-    MisService.register(ITestService.class, new TestService());
+    MisService.register(ILibraryService.class, new LibraryService());
      
     // 服务接口 + 服务接口的实现类
-    MisService.register(ITestService.class, TestService.class);
+    MisService.register(ILibraryService.class, LibraryService.class);
 
 
 ## 打包Mis并上传
@@ -71,14 +69,14 @@ apply plugin: 'mis'
 #### 配置 GAV
 在模块 build.gradle 中添加上传GAV配置，例如：
 
-    uploadMis {
-     
-        main {
-            groupId = 'com.eastwood.demo'
-            artifactId = 'app-sdk'
-            version = '1.0.0'
-        }
-     
+    dependencies {
+            implementation 'com.eastwood.common:mis:1.0.0'
+            
+            implementation misSource(
+                        group: 'com.eastwood.demo',
+                        name: 'library-sdk',
+                        version: '1.0.0'
+            )
     }
  
 除了[GAV](https://maven.apache.org/guides/mini/guide-naming-conventions.html)等必配项，还有以下配置：
@@ -86,35 +84,17 @@ apply plugin: 'mis'
   
   若上传的sdk引用其他类库，需配置对应的GAV，例如:
   
-            uploadMis {
-             
-                main {
-                    groupId = 'com.eastwood.demo'
-                    artifactId = 'app-sdk'
-                    version = '1.0.0'
-             
-                    dependencies = ['com.google.code.gson:gson:2.8.1']
-                }
-             
+            dependencies {
+                    implementation 'com.eastwood.common:mis:1.0.0'
+                    
+                    implementation misSource(
+                                group: 'com.eastwood.demo',
+                                name: 'library-sdk',
+                                version: '1.0.0',
+                                dependencies = ['com.google.code.gson:gson:2.8.1']
+                    )
             }
 
-在[**MicroModule**](https://github.com/EastWoodYang/MicroModule)中的配置
-
-    uploadMis {
-     
-        main {
-            groupId = 'com.eastwood.demo'
-            artifactId = 'micromodule-main-sdk'
-            version = '1.0.0'
-        }
-     
-        p_common {
-            groupId = 'com.eastwood.demo'
-            artifactId = 'micromodule-main-sdk'
-            version = '1.0.0'
-        }
-    
-    }
 
 #### 执行上传
 打开Gradle Tasks View，在对应项目中，双击 Tasks/upload/uploadMis(_项目名称)，将执行上传mis-sdk任务。
@@ -134,12 +114,19 @@ apply plugin: 'mis'
 在其他模块build.gradle中添加mis库以及之前上传的aar引用，例如：
 
     dependencies {
-        compile 'com.eastwood.common:mis:1.0.0'
-        compile 'com.eastwood.demo:app-sdk:1.0.0'
+        implementation 'com.eastwood.common:mis:1.0.0'
+        implementation misProvider('com.eastwood.demo:library-sdk:1.0.0')
     }
 
 
 通过接口在**MisService**中获取服务，例如：
 
-    ITestService testService = MisService.getService(ITestService.class);
-    testService.get()
+    ILibraryService libraryService = MisService.getService(ILibraryService.class);
+    libraryService.getServiceName()
+    
+    
+    
+## QA
+#### 1. 没有Maven私服，怎么办？
+
+    不指定misSource 和 misProvider 中的version。
