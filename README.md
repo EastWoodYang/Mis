@@ -110,17 +110,10 @@ apply plugin: 'mis'
     }
 
 #### 执行上传
-打开Gradle Tasks View，在对应项目中，双击 Tasks/upload/uploadMis(_项目名称)，将执行上传mis-sdk任务。
+打开Gradle Tasks View，在对应项目中，双击 Tasks/upload/uploadMis(_项目名称)，将执行上传任务。
  
 <img src='https://github.com/EastWoodYang/Mis/blob/master/picture/3.png'/>
- 
 
-上传成功成功后，在模块build.gradle中添加aar引用，例如：
-         
-     dependencies {
-         compile 'com.eastwood.common:mis:1.0.0'
-         compile 'com.eastwood.demo:app-sdk:1.0.0'
-     }
 
 ## 其他模块获取服务
 
