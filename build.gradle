@@ -35,8 +35,8 @@ task clean(type: Delete) {
 
 apply plugin: 'mis-maven'
 misMaven {
-    url = "http://nexus.yingyingwork.com"
-    repository = "android-release"
-    username = "android"
-    password = "123456"
+    url = "http://your-maven-nexus-domain"
+    repository = "the repository you want to push"
+    username = "****"
+    password = "****"
 }
