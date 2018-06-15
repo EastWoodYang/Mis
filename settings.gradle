@@ -1,5 +1,5 @@
-include ':app', ':micro-module', ':library'
-
+include ':app', ':library'
+include ':micro-module'
 include ':mis-core'
 
-includeBuild './mis-plugin'
+//includeBuild './mis-plugin'

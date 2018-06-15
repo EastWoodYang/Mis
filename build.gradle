@@ -5,15 +5,15 @@ buildscript {
     repositories {
         google()
         jcenter()
-        mavenCentral()
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:3.0.1'
 
-//        // micro-module
-        classpath 'com.eastwood.tools.plugin:micro-module:1.0.1'
+        // micro-module
+        classpath 'com.eastwood.tools.plugins:micro-module:1.0.1'
+
         // mis
-        classpath 'com.eastwood.tools.plugins:mis:1.0.0'
+        classpath 'com.eastwood.tools.plugins:mis:1.0.1'
 
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
