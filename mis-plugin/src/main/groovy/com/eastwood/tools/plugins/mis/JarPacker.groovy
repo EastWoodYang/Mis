@@ -109,14 +109,16 @@ class JarPacker {
         return typeDir
     }
 
-
-
     private static File generateReleaseJar(File classesDir, def argFiles, def classPath, def target, def source) {
+        def classpathSeparator = ";"
+        if (!System.properties['os.name'].toLowerCase().contains('windows')) {
+            classpathSeparator = ":"
+        }
         def p
         if (classPath.size() == 0) {
             p = ("javac -encoding UTF-8 -target " + target + " -source " + source + " -d . " + argFiles.join(' ')).execute(null, classesDir)
         } else {
-            p = ("javac -encoding UTF-8 -target " + target + " -source " + source + " -d . -classpath " + classPath.join(';') + " " + argFiles.join(' ')).execute(null, classesDir)
+            p = ("javac -encoding UTF-8 -target " + target + " -source " + source + " -d . -classpath " + classPath.join(classpathSeparator) + " " + argFiles.join(' ')).execute(null, classesDir)
         }
 
         def result = p.waitFor()
