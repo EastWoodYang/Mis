@@ -1,5 +1,5 @@
-# Mis - Module interface service.
-模块接口服务
+# MIS
+Module Interface Service.
 
 ## 配置
 

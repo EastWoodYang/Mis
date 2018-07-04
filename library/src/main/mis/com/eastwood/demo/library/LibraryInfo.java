@@ -19,5 +19,4 @@ public class LibraryInfo {
         this.name = name;
     }
 
-
 }
