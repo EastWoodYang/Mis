@@ -9,7 +9,7 @@
 ```
 buildscript {
     dependencies {
-        classpath 'com.eastwood.tools.plugins:mis:1.0.1'
+        classpath 'com.eastwood.tools.plugins:mis:1.0.2'
     }
 }
 ```
