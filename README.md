@@ -9,18 +9,14 @@ Module Interface Service.
 ```
 buildscript {
     dependencies {
-        classpath 'com.eastwood.tools.plugins:mis:1.0.2'
+        classpath 'com.eastwood.tools.plugins:mis:1.0.3'
     }
 }
 ```
 
 在模块的build.gradle中添加**mis 插件**：
 ```
-apply plugin: 'com.android.application'
- 
-// under plugin 'com.android.application'
 apply plugin: 'mis' 
-
 ```
 
 #### 创建 mis 目录

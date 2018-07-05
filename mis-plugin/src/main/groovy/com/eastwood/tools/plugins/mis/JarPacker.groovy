@@ -85,7 +85,11 @@ class JarPacker {
         }
         def classPath = []
         project.configurations.getByName(name).resolve().each {
-            classPath << it
+            if(it.name.endsWith('.aar')) {
+                classPath << MisUtil.getAARClassesJar(it)
+            } else {
+                classPath << it.absolutePath
+            }
         }
         classPath << project.android.bootClasspath[0].toString()
 

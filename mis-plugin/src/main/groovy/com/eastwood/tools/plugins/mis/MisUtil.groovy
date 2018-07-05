@@ -13,6 +13,7 @@ import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
 import java.util.jar.JarEntry
 import java.util.jar.JarFile
+import java.util.zip.ZipFile
 
 class MisUtil {
 
@@ -86,6 +87,23 @@ class MisUtil {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    static String getAARClassesJar(File input) {
+        def jarFile = new File(input.getParent(), 'classes.jar')
+        if (jarFile.exists()) return jarFile
+
+        def zip = new ZipFile(input)
+        zip.entries().each {
+            if (it.isDirectory()) return
+            if (it.name == 'classes.jar') {
+                def fos = new FileOutputStream(jarFile)
+                fos.write(zip.getInputStream(it).bytes)
+                fos.close()
+            }
+        }
+        zip.close()
+        return jarFile.absolutePath
     }
 
     static Map<String, SourceFile> getLastModifiedSourceFileMap(File lastModifiedManifestFile) {
