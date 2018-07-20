@@ -32,15 +32,7 @@ class JarPacker {
     }
 
     static File packReleaseJar(Project project, Map<String, ?> options) {
-        def releaseJar = getReleaseJar(project, options)
         def typeDir = getTypeDir(project, options)
-        def lastModifiedManifest = new File(typeDir, "lastModifiedManifest.xml")
-        if (releaseJar.exists() && lastModifiedManifest.exists()) {
-            if (!hasModifiedSource(project, options)) {
-                return releaseJar
-            }
-        }
-
         typeDir.deleteDir()
         typeDir.mkdirs()
         def sourceDir = new File(typeDir, "source")
@@ -93,7 +85,8 @@ class JarPacker {
         }
         classPath << project.android.bootClasspath[0].toString()
 
-        releaseJar = generateReleaseJar(classesDir, argFiles, classPath, target, source)
+        def releaseJar = generateReleaseJar(classesDir, argFiles, classPath, target, source)
+        def lastModifiedManifest = new File(typeDir, "lastModifiedManifest.xml")
         MisUtil.saveCurrentModifiedManifest(lastModifiedManifest, currentModifiedSourceFileMap)
         return releaseJar
     }

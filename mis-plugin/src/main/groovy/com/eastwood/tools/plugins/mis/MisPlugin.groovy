@@ -93,23 +93,39 @@ class MisPlugin implements Plugin<Project> {
     }
 
     Object handleLocalJar(Project project, Map<String, ?> options) {
+        File targetGroup = project.rootProject.file(".gradle/mis/" + options.group)
+        targetGroup.mkdirs()
+        File target = new File(targetGroup, options.name + ".jar")
+        if (target.exists()) {
+            boolean hasModifiedSource = JarPacker.hasModifiedSource(project, options)
+            if(!hasModifiedSource) {
+                return project.files(target)
+            }
+        }
         File releaseJar = JarPacker.packReleaseJar(project, options)
         if (releaseJar == null) return []
-        File targetParent = project.rootProject.file(".gradle/mis/" + options.group)
-        targetParent.mkdirs()
-        File target = new File(targetParent, options.name + ".jar")
+
         MisUtil.copyFile(releaseJar, target)
         return project.files(target)
     }
 
     Object handleMavenJar(Project project, Map<String, ?> options) {
+        boolean hasModifiedSource = JarPacker.hasModifiedSource(project, options)
         File targetGroup = project.rootProject.file(".gradle/mis/" + options.group)
         File target = new File(targetGroup, options.name + ".jar")
         if (target.exists()) {
-            return project.files(target)
+            if(!hasModifiedSource) {
+                return project.files(target)
+            }
+            def releaseJar = JarPacker.packReleaseJar(project, options)
+            if (releaseJar == null) {
+                return []
+            } else {
+                MisUtil.copyFile(releaseJar, target)
+                return project.files(target)
+            }
         } else {
-            boolean result = JarPacker.hasModifiedSource(project, options)
-            if (!result) {
+            if (!hasModifiedSource) {
                 Map<String, ?> optionsCopy = options.clone()
                 optionsCopy.remove("dependencies")
                 optionsCopy.remove("microModuleName")
@@ -135,7 +151,7 @@ class MisPlugin implements Plugin<Project> {
 
             def releaseJar = JarPacker.packReleaseJar(project, options)
             if (releaseJar == null) {
-                return optionsCopy
+                return []
             }
             boolean equals = MisUtil.compareJar(releaseJar.absolutePath, filePath)
             if (equals) {
