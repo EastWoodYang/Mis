@@ -32,6 +32,32 @@ class MisUtil {
         }
     }
 
+    static Map<String, ?> optionsFilter(Map<String, ?> options) {
+        Map<String, ?> optionsCopy = options.clone()
+        optionsCopy.remove("dependencies")
+        optionsCopy.remove("microModuleName")
+        return optionsCopy
+    }
+
+    static boolean compareMavenJar(Project project, Map<String, ?> options, String localPath) {
+        Map<String, ?> optionsCopy = optionsFilter(options)
+
+        String filePath = null
+        String fileName = optionsCopy.name + "-" + optionsCopy.version + ".jar"
+
+        def random = new Random()
+        def name = "mis_" + random.nextLong()
+        project.configurations.create(name)
+        project.dependencies.add(name, optionsCopy)
+        project.configurations.getByName(name).resolve().each {
+            if (it.name.endsWith(fileName)) {
+                filePath = it.absolutePath
+            }
+        }
+
+        return compareJar(localPath, filePath)
+    }
+
     static boolean compareJar(String jar1, String jar2) {
         try {
             JarFile jarFile1 = new JarFile(jar1)
@@ -104,16 +130,18 @@ class MisUtil {
         return jarFile.absolutePath
     }
 
-    static Map<String, SourceFile> getLastModifiedSourceFileMap(File lastModifiedManifestFile) {
-        Map<String, SourceFile> lastModifiedSourceFileMap = new HashMap<>();
-        if (!lastModifiedManifestFile.exists()) return
+    static SourceState getLastModifiedSourceState(File lastModifiedManifestFile) {
+        SourceState source = new SourceState()
+        source.lastModifiedSourceFile = new HashMap<>()
+        if (!lastModifiedManifestFile.exists()) return source
         DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance()
         Document document = builderFactory.newDocumentBuilder().parse(lastModifiedManifestFile)
         NodeList classesNodeList = document.getElementsByTagName("source")
         if (classesNodeList.length == 0) {
-            return lastModifiedSourceFileMap
+            return source.lastModifiedSourceFile
         }
         Element classesElement = (Element) classesNodeList.item(0)
+        source.version = classesElement.getAttribute("version")
         NodeList fileNodeList = classesElement.getElementsByTagName("file")
         for (int i = 0; i < fileNodeList.getLength(); i++) {
             Element fileElement = (Element) fileNodeList.item(i)
@@ -121,16 +149,17 @@ class MisUtil {
             resourceFile.name = fileElement.getAttribute("name")
             resourceFile.path = fileElement.getAttribute("path")
             resourceFile.lastModified = fileElement.getAttribute("lastModified").toLong()
-            lastModifiedSourceFileMap.put(resourceFile.path, resourceFile)
+            source.lastModifiedSourceFile.put(resourceFile.path, resourceFile)
         }
-        return lastModifiedSourceFileMap
+        return source
     }
 
-    static saveCurrentModifiedManifest(File manifestFile, Map<String, SourceFile> currentModifiedSourceMap) {
+    static saveCurrentModifiedManifest(File manifestFile, String version, Map<String, SourceFile> currentModifiedSourceMap) {
         DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance()
         Document documentTemp = builderFactory.newDocumentBuilder().newDocument()
         // resources
         Element sourceElement = documentTemp.createElement("source")
+        sourceElement.setAttribute("version", version)
         currentModifiedSourceMap.each {
             SourceFile sourceFile = it.value
             Element fileElement = documentTemp.createElement("file")

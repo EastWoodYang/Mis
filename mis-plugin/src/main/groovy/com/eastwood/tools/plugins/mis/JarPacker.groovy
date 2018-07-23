@@ -87,7 +87,7 @@ class JarPacker {
 
         def releaseJar = generateReleaseJar(classesDir, argFiles, classPath, target, source)
         def lastModifiedManifest = new File(typeDir, "lastModifiedManifest.xml")
-        MisUtil.saveCurrentModifiedManifest(lastModifiedManifest, currentModifiedSourceFileMap)
+        MisUtil.saveCurrentModifiedManifest(lastModifiedManifest, options.version, currentModifiedSourceFileMap)
         return releaseJar
     }
 
@@ -212,7 +212,10 @@ class JarPacker {
         if(!lastModifiedManifest.exists()) {
             return true
         }
-        Map<String, SourceFile> lastModifiedSourceFileMap = MisUtil.getLastModifiedSourceFileMap(lastModifiedManifest)
+        SourceState sourceState = MisUtil.getLastModifiedSourceState(lastModifiedManifest)
+        if(sourceState.version != options.version) {
+            return true
+        }
 
         boolean isMicroModule = MisUtil.isMicroModule(project)
         BaseExtension android = project.extensions.getByName('android')
@@ -223,18 +226,18 @@ class JarPacker {
             boolean result = false
             if (isMicroModule) {
                 if (options.microModuleName == null) {
-                    result = findModifiedSource(it, lastModifiedSourceFileMap)
+                    result = findModifiedSource(it, sourceState.lastModifiedSourceFile)
                 } else if (options.microModuleName != null && it.absolutePath.endsWith(options.microModuleName + "${File.separator}src${File.separator}main${File.separator}mis")) {
-                    result = findModifiedSource(it, lastModifiedSourceFileMap)
+                    result = findModifiedSource(it, sourceState.lastModifiedSourceFile)
                 }
             } else {
-                result = findModifiedSource(it, lastModifiedSourceFileMap)
+                result = findModifiedSource(it, sourceState.lastModifiedSourceFile)
             }
             if (result) {
                 return true
             }
         }
-        return lastModifiedSourceFileMap.size() > 0
+        return sourceState.lastModifiedSourceFile.size() > 0
     }
 
     private static boolean findModifiedSource(File file, Map<String, SourceFile> lastModifiedSourceFileMap) {

@@ -103,69 +103,47 @@ class MisPlugin implements Plugin<Project> {
             }
         }
         File releaseJar = JarPacker.packReleaseJar(project, options)
-        if (releaseJar == null) return []
+        if (releaseJar == null) {
+            target.delete()
+            return []
+        }
 
         MisUtil.copyFile(releaseJar, target)
         return project.files(target)
     }
 
     Object handleMavenJar(Project project, Map<String, ?> options) {
-        boolean hasModifiedSource = JarPacker.hasModifiedSource(project, options)
         File targetGroup = project.rootProject.file(".gradle/mis/" + options.group)
         File target = new File(targetGroup, options.name + ".jar")
         if (target.exists()) {
-            if(!hasModifiedSource) {
-                return project.files(target)
-            }
-            def releaseJar = JarPacker.packReleaseJar(project, options)
-            if (releaseJar == null) {
-                return []
-            } else {
-                MisUtil.copyFile(releaseJar, target)
+            if(!JarPacker.hasModifiedSource(project, options)) {
                 return project.files(target)
             }
         } else {
-            if (!hasModifiedSource) {
-                Map<String, ?> optionsCopy = options.clone()
-                optionsCopy.remove("dependencies")
-                optionsCopy.remove("microModuleName")
-                return optionsCopy
-            }
-
-            String filePath = null
-            String fileName = options.name + "-" + options.version + ".jar"
-
-            Map<String, ?> optionsCopy = options.clone()
-            optionsCopy.remove("dependencies")
-            optionsCopy.remove("microModuleName")
-
-            def random = new Random()
-            def name = "mis_" + random.nextLong()
-            project.configurations.create(name)
-            project.dependencies.add(name, optionsCopy)
-            project.configurations.getByName(name).resolve().each {
-                if (it.name.endsWith(fileName)) {
-                    filePath = it.absolutePath
-                }
-            }
-
-            def releaseJar = JarPacker.packReleaseJar(project, options)
-            if (releaseJar == null) {
-                return []
-            }
-            boolean equals = MisUtil.compareJar(releaseJar.absolutePath, filePath)
-            if (equals) {
-                releaseJar.delete()
-                return optionsCopy
-            } else {
-                targetGroup = project.rootProject.file(".gradle/mis/" + options.group)
-                targetGroup.mkdirs()
-                target = new File(targetGroup, options.name + ".jar")
-                MisUtil.copyFile(releaseJar, target)
-                return project.files(target)
+            if(!JarPacker.hasModifiedSource(project, options)) {
+                return MisUtil.optionsFilter(options)
             }
         }
 
+        def releaseJar = JarPacker.packReleaseJar(project, options)
+        if (releaseJar == null) {
+            target.delete()
+            return []
+        }
+
+        boolean equals = MisUtil.compareMavenJar(project, options, releaseJar.absolutePath)
+        if (equals) {
+            target.delete()
+            return MisUtil.optionsFilter(options)
+        } else {
+            targetGroup = project.rootProject.file(".gradle/mis/" + options.group)
+            targetGroup.mkdirs()
+            target = new File(targetGroup, options.name + ".jar")
+            MisUtil.copyFile(releaseJar, target)
+            return project.files(target)
+        }
     }
+
+
 
 }
