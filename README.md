@@ -9,7 +9,7 @@ Module Interface Service.
 ```
 buildscript {
     dependencies {
-        classpath 'com.eastwood.tools.plugins:mis:1.0.3'
+        classpath 'com.eastwood.tools.plugins:mis:1.0.5'
     }
 }
 ```
