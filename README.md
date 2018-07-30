@@ -167,6 +167,7 @@ dependencies {
 
 #### 执行上传Task
 打开Gradle Tasks View，在对应项目中，双击 Tasks/upload/uploadMis，将执行上传任务。
+
 ![上传SDK](https://user-gold-cdn.xitu.io/2018/7/30/164eacb1e751a292?w=236&h=265&f=png&s=5912)
 
 上传成功之后，需指定或更新 `misProvider` 中的version。
