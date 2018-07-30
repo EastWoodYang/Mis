@@ -6,7 +6,7 @@ import com.google.gson.annotations.SerializedName;
  * @author eastwood
  * createDate: 2018-06-14
  */
-public class LibraryInfo {
+public class LibraryModel {
 
     @SerializedName("name")
     private String name;

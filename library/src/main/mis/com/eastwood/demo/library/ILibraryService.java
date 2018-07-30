@@ -6,7 +6,6 @@ package com.eastwood.demo.library;
  */
 public interface ILibraryService {
 
-    String getServiceName();
+    LibraryModel getLibraryInfo();
 
-    LibraryInfo getLibraryInfo();
 }

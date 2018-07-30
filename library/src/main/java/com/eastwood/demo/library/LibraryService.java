@@ -7,13 +7,8 @@ package com.eastwood.demo.library;
 public class LibraryService implements ILibraryService {
 
     @Override
-    public String getServiceName() {
-        return "LibraryService";
-    }
-
-    @Override
-    public LibraryInfo getLibraryInfo() {
-        LibraryInfo libraryInfo = new LibraryInfo();
+    public LibraryModel getLibraryInfo() {
+        LibraryModel libraryInfo = new LibraryModel();
         libraryInfo.setName("library");
         return libraryInfo;
     }

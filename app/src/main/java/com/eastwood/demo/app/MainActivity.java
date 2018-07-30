@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.os.Bundle;
 
 import com.eastwood.common.mis.MisService;
+import com.eastwood.demo.library.ILibraryService;
 
 /**
  * @author eastwood
@@ -16,10 +17,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        //
-        MisService.register(ITestService.class, new TestService());
-        MisService.register(ITestService.class, TestService.class);
-
-
+        ILibraryService libraryService = MisService.getService(ILibraryService.class);
+        libraryService.getLibraryInfo();
     }
 }
