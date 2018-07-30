@@ -20,6 +20,7 @@ android {
 
 dependencies {
     implementation 'com.android.support:appcompat-v7:25.1.1'
+    implementation 'com.eastwood.common:auto-inject:1.0.0'
 
 
     implementation project(':mis-core')
@@ -39,4 +40,13 @@ dependencies {
 
 
 
+}
+
+
+
+apply plugin: 'auto-inject'
+
+autoInject {
+    showLog = true
+    ignorePackages = ['android', 'com/google']
 }
