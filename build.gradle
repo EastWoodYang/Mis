@@ -43,4 +43,6 @@ misMaven {
     repository = "the repository you want to push"
     username = "****"
     password = "****"
+    repository = "the repository you want to pulish"
+    snapshotRepository = "the repository you want to push"
 }

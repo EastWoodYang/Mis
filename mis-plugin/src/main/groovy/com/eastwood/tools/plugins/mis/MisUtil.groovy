@@ -41,10 +41,8 @@ class MisUtil {
 
     static boolean compareMavenJar(Project project, Map<String, ?> options, String localPath) {
         Map<String, ?> optionsCopy = optionsFilter(options)
-
         String filePath = null
         String fileName = optionsCopy.name + "-" + optionsCopy.version + ".jar"
-
         def random = new Random()
         def name = "mis_" + random.nextLong()
         project.configurations.create(name)
@@ -54,7 +52,7 @@ class MisUtil {
                 filePath = it.absolutePath
             }
         }
-
+        if(filePath == null) return false
         return compareJar(localPath, filePath)
     }
 

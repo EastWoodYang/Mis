@@ -65,7 +65,7 @@ class JarPacker {
             }
         }
 
-        if(argFiles.size() == 0) {
+        if (argFiles.size() == 0) {
             return null
         }
 
@@ -77,7 +77,7 @@ class JarPacker {
         }
         def classPath = []
         project.configurations.getByName(name).resolve().each {
-            if(it.name.endsWith('.aar')) {
+            if (it.name.endsWith('.aar')) {
                 classPath << MisUtil.getAARClassesJar(it)
             } else {
                 classPath << it.absolutePath
@@ -89,11 +89,6 @@ class JarPacker {
         def lastModifiedManifest = new File(typeDir, "lastModifiedManifest.xml")
         MisUtil.saveCurrentModifiedManifest(lastModifiedManifest, options.version, currentModifiedSourceFileMap)
         return releaseJar
-    }
-
-    static File getReleaseJar(Project project, Map<String, ?> options) {
-        def typeDir = getTypeDir(project, options)
-        return new File(typeDir, "outputs/classes.jar")
     }
 
     static File getTypeDir(Project project, Map<String, ?> options) {
@@ -160,7 +155,6 @@ class JarPacker {
         }
     }
 
-
     private static void filterSource(File file, String prefix, File sourceDir, def argFiles, Map<String, SourceFile> currentModifiedSourceFileMap, Closure[] sourceFilters) {
         if (file.isDirectory()) {
             file.listFiles().each { File childFile ->
@@ -209,13 +203,10 @@ class JarPacker {
     static boolean hasModifiedSource(Project project, Map<String, ?> options) {
         def typeDir = getTypeDir(project, options)
         def lastModifiedManifest = new File(typeDir, "lastModifiedManifest.xml")
-        if(!lastModifiedManifest.exists()) {
+        if (!lastModifiedManifest.exists()) {
             return true
         }
         SourceState sourceState = MisUtil.getLastModifiedSourceState(lastModifiedManifest)
-        if(sourceState.version != options.version) {
-            return true
-        }
 
         boolean isMicroModule = MisUtil.isMicroModule(project)
         BaseExtension android = project.extensions.getByName('android')
@@ -267,6 +258,5 @@ class JarPacker {
             }
         }
     }
-
 
 }

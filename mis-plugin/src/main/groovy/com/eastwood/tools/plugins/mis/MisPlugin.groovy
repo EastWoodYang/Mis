@@ -1,19 +1,29 @@
 package com.eastwood.tools.plugins.mis
 
 import com.android.build.gradle.BaseExtension
+import org.apache.commons.lang.StringUtils
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.publish.maven.MavenPublication
 
 class MisPlugin implements Plugin<Project> {
 
     Project project
-    List<Map<String, ?>> misProviderList
-    boolean initMisDir
+    List<Map<String, ?>> uploadMavenOptionList
+    boolean initMisSrcDir
+
+    MisMavenExtension mavenExtension
 
     void apply(Project project) {
         this.project = project
         if (!MisUtil.isAndroidPlugin(project)) {
             throw new RuntimeException("The android or android-library plugin must be applied to the project.")
+        }
+        uploadMavenOptionList = new ArrayList<>()
+
+        mavenExtension = project.extensions.findByName("misMaven")
+        if (mavenExtension == null) {
+            mavenExtension = project.rootProject.extensions.findByName("misMaven")
         }
 
         project.dependencies.metaClass.misProvider { String value ->
@@ -33,14 +43,12 @@ class MisPlugin implements Plugin<Project> {
             return handleMisProvider(options.group, options.name, options.version)
         }
 
-        misProviderList = new ArrayList<>()
         project.dependencies.metaClass.misSource { Map<String, ?> options ->
-            if (!initMisDir) {
-                setMisDir(project)
-                initMisDir = true
+            if (!initMisSrcDir) {
+                setMisSrcDir(project)
+                initMisSrcDir = true
             }
 
-            misProviderList << options
             if (options.containsKey("version")) {
                 return handleMavenJar(project, options)
             } else {
@@ -49,25 +57,70 @@ class MisPlugin implements Plugin<Project> {
         }
 
         project.afterEvaluate {
-            if (!initMisDir) {
-                setMisDir(project)
+            if (!initMisSrcDir) {
+                setMisSrcDir(project)
             }
-            misProviderList.each {
-                def taskName
-                String microModuleName = it.get("microModuleName")
-                if (microModuleName != null) {
-                    taskName = 'uploadMis_' + microModuleName
-                } else {
-                    taskName = 'uploadMis'
+
+            if (mavenExtension == null || uploadMavenOptionList.size() == 0) {
+                return
+            }
+
+            project.plugins.apply('maven-publish')
+            def publishing = project.extensions.getByName('publishing')
+            publishing.repositories {
+                if (mavenExtension.repository != null) {
+                    maven {
+                        name = 'Maven'
+                        url = mavenExtension.repository
+                        if (mavenExtension.username != null || mavenExtension.password != null) {
+                            credentials {
+                                username = mavenExtension.username
+                                password = mavenExtension.password
+                            }
+                        }
+                    }
                 }
-                UploadTask uploadSDKTask = project.getTasks().create(taskName, UploadTask.class)
-                uploadSDKTask.setGroup("upload")
-                uploadSDKTask.options = it
+
+                if (mavenExtension.snapshotRepository != null) {
+                    maven {
+                        name = 'MavenSnapshot'
+                        url = mavenExtension.snapshotRepository
+                        if (mavenExtension.username != null || mavenExtension.password != null) {
+                            credentials {
+                                username = mavenExtension.username
+                                password = mavenExtension.password
+                            }
+                        }
+                    }
+                }
+            }
+
+            uploadMavenOptionList.each {
+                def options = it
+                def publicationName = 'mis[' + options.name + "]"
+                configPublication(options, publicationName)
+                String publishMavenTaskName = "publish" + StringUtils.capitalize(publicationName) + "PublicationToMavenRepository"
+                String publishMavenSnapshotTaskName = "publish" + StringUtils.capitalize(publicationName) + "PublicationToMavenSnapshotRepository"
+                project.tasks.whenTaskAdded {
+                    if (it.name == publishMavenTaskName || it.name == publishMavenSnapshotTaskName) {
+                        def taskName = 'compileMis[' + options.name + ']Source'
+                        def compileTask = project.getTasks().findByName(taskName)
+                        if (compileTask == null) {
+                            compileTask = project.getTasks().create(taskName, CompileMisSourceTask.class)
+                            compileTask.options = options
+                            it.dependsOn compileTask
+                            it.doLast {
+                                File group = project.rootProject.file(".gradle/mis/" + options.group)
+                                new File(group, options.name + ".jar").delete()
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
-    def setMisDir(Project project) {
+    def setMisSrcDir(Project project) {
         def type = "main"
         BaseExtension android = project.extensions.getByName('android')
         def obj = android.sourceSets.getByName(type)
@@ -98,7 +151,7 @@ class MisPlugin implements Plugin<Project> {
         File target = new File(targetGroup, options.name + ".jar")
         if (target.exists()) {
             boolean hasModifiedSource = JarPacker.hasModifiedSource(project, options)
-            if(!hasModifiedSource) {
+            if (!hasModifiedSource) {
                 return project.files(target)
             }
         }
@@ -116,11 +169,12 @@ class MisPlugin implements Plugin<Project> {
         File targetGroup = project.rootProject.file(".gradle/mis/" + options.group)
         File target = new File(targetGroup, options.name + ".jar")
         if (target.exists()) {
-            if(!JarPacker.hasModifiedSource(project, options)) {
+            if (!JarPacker.hasModifiedSource(project, options)) {
+                uploadMavenOptionList << options
                 return project.files(target)
             }
         } else {
-            if(!JarPacker.hasModifiedSource(project, options)) {
+            if (!JarPacker.hasModifiedSource(project, options)) {
                 return MisUtil.optionsFilter(options)
             }
         }
@@ -136,6 +190,7 @@ class MisPlugin implements Plugin<Project> {
             target.delete()
             return MisUtil.optionsFilter(options)
         } else {
+            uploadMavenOptionList << options
             targetGroup = project.rootProject.file(".gradle/mis/" + options.group)
             targetGroup.mkdirs()
             target = new File(targetGroup, options.name + ".jar")
@@ -144,6 +199,34 @@ class MisPlugin implements Plugin<Project> {
         }
     }
 
+    def configPublication(Map<String, ?> options, publicationName) {
 
+        def publishing = project.extensions.getByName('publishing')
+        MavenPublication mavenPublication = publishing.publications.maybeCreate(publicationName, MavenPublication)
+        mavenPublication.groupId = options.group
+        mavenPublication.artifactId = options.name
+        mavenPublication.version = options.version
+        mavenPublication.pom.packaging = 'jar'
+
+        def typeDir = JarPacker.getTypeDir(project, options)
+        def outputsDir = new File(typeDir, "outputs")
+        mavenPublication.artifact source: new File(outputsDir, "classes.jar")
+        mavenPublication.artifact source: new File(outputsDir, "classes-source.jar"), classifier: 'sources'
+
+        if (options.dependencies != null && options.dependencies.size() > 0) {
+            def dependencies = options.dependencies
+            mavenPublication.pom.withXml {
+                def dependenciesNode = asNode().appendNode('dependencies')
+                dependencies.each {
+                    def gav = it.split(":")
+                    def dependencyNode = dependenciesNode.appendNode('dependency')
+                    dependencyNode.appendNode('groupId', gav[0])
+                    dependencyNode.appendNode('artifactId', gav[1])
+                    dependencyNode.appendNode('version', gav[2])
+                }
+            }
+        }
+
+    }
 
 }
