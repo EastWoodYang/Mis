@@ -7,13 +7,13 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.0.1'
+        classpath 'com.android.tools.build:gradle:3.1.3'
 
         // micro-module
-        classpath 'com.eastwood.tools.plugins:micro-module:1.0.1'
+        classpath 'com.eastwood.tools.plugins:micro-module:1.0.2'
 
         // mis
-        classpath 'com.eastwood.tools.plugins:mis:1.0.3'
+        classpath 'com.eastwood.tools.plugins:mis:1.1.0'
 
 
         // auto-inject
@@ -39,10 +39,8 @@ task clean(type: Delete) {
 
 apply plugin: 'mis-maven'
 misMaven {
-    url = "http://your-maven-nexus-domain"
-    repository = "the repository you want to push"
     username = "****"
     password = "****"
-    repository = "the repository you want to pulish"
-    snapshotRepository = "the repository you want to push"
+    repository = "the repository you want to upload mis-sdk"
+    snapshotRepository = "the repository you want to upload mis-sdk-snapshot"
 }

@@ -27,7 +27,7 @@ MIS - 模块接口服务（Module Interface Service）
 ```
 buildscript {
     dependencies {
-        classpath 'com.eastwood.tools.plugins:mis:1.0.5'
+        classpath 'com.eastwood.tools.plugins:mis:1.1.0'
     }
 }
 ```
@@ -114,10 +114,10 @@ libraryService.getLibraryInfo()
 apply plugin: 'mis-maven'
  
 misMaven {
-    url = 'maven地址'
-    repository = 'maven上对应的repository'
     username = '用户名'
     password = '密码'
+    repository = 'maven上对应的仓库地址'
+    snapshotRepository = 'maven上对应的快照仓库地址'
 }
 ```
 
@@ -129,7 +129,7 @@ dependencies {
     implementation misSource(
         group: 'com.eastwood.demo',
         name: 'library-sdk'
-        version: 1.0.0 // 上传maven时必须指定版本号，目前不不支持SNAPSHOT
+        version: 1.0.0 // 上传maven时必须指定版本号，支持'version-SNAPSHOT'
     )
 }
 ```
@@ -166,9 +166,12 @@ dependencies {
 ```
 
 #### 执行上传Task
-打开Gradle Tasks View，在对应项目中，双击 Tasks/upload/uploadMis，将执行上传任务。
+打开Gradle Tasks View，在对应项目执行上传任务。
 
-![上传SDK](https://user-gold-cdn.xitu.io/2018/7/30/164eacb1e751a292?w=236&h=265&f=png&s=5912)
+* publishMis[...]PublicationToMavenRepository 对应上传至repository
+* publishMis[...]PublicationToMavenSnapshotRepository 对应上传至snapshotRepository
+
+![上传SDK](https://user-gold-cdn.xitu.io/2018/8/4/1650254af594c79b?w=502&h=308&f=png&s=11669)
 
 上传成功之后，需指定或更新 `misProvider` 中的version。
 ```
