@@ -1,7 +1,6 @@
 package com.eastwood.tools.plugins.mis
 
 import com.android.build.gradle.BaseExtension
-import org.apache.commons.lang.StringUtils
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.publish.maven.MavenPublication
@@ -97,10 +96,10 @@ class MisPlugin implements Plugin<Project> {
 
             uploadMavenOptionList.each {
                 def options = it
-                def publicationName = 'mis[' + options.name + "]"
+                def publicationName = 'Mis[' + options.name + "]"
                 configPublication(options, publicationName)
-                String publishMavenTaskName = "publish" + StringUtils.capitalize(publicationName) + "PublicationToMavenRepository"
-                String publishMavenSnapshotTaskName = "publish" + StringUtils.capitalize(publicationName) + "PublicationToMavenSnapshotRepository"
+                String publishMavenTaskName = "publish" + publicationName + "PublicationToMavenRepository"
+                String publishMavenSnapshotTaskName = "publish" + publicationName + "PublicationToMavenSnapshotRepository"
                 project.tasks.whenTaskAdded {
                     if (it.name == publishMavenTaskName || it.name == publishMavenSnapshotTaskName) {
                         def taskName = 'compileMis[' + options.name + ']Source'
