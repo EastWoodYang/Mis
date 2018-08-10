@@ -3,7 +3,8 @@ dependencies {
 
     implementation misSource(
             microModuleName: 'p_common',
-            group: 'com.eastwood.demo',
-            name: 'module-common-sdk'
+            groupId: 'com.eastwood.demo',
+            artifactId: 'module-common-sdk'
     )
+
 }

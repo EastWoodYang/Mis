@@ -27,12 +27,16 @@ dependencies {
     // or
     // implementation 'com.eastwood.common:mis:1.0.0'
 
-    implementation project(':library')
-    implementation project(':micro-module')
+//    implementation project(':library')
+//    implementation project(':library2')
+//    implementation project(':micro-module')
 
 
     // implementation library-sdk which provide by library module.
     implementation misProvider('com.eastwood.demo:library-sdk')
+    implementation misProvider('com.eastwood.demo:library2-sdk')
+    implementation misProvider('com.eastwood.demo:module-main-sdk')
+    implementation misProvider('com.eastwood.demo:module-common-sdk')
 
     // after library-sdk push to maven, you need specify a version.
     // e.g.

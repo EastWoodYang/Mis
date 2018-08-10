@@ -1,5 +1,7 @@
 package com.eastwood.tools.plugins.mis
 
+import com.android.build.gradle.BaseExtension
+import com.android.utils.FileUtils
 import org.gradle.api.Project
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -11,167 +13,225 @@ import javax.xml.transform.Transformer
 import javax.xml.transform.TransformerFactory
 import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
-import java.util.jar.JarEntry
-import java.util.jar.JarFile
-import java.util.zip.ZipFile
 
 class MisUtil {
 
-    static boolean isMicroModule(Project project) {
-        return project.plugins.findPlugin("micro-module")
+    static String getMisPathFormManifest(Project project, String groupId, String artifactId) {
+        DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance()
+        File misDir = new File(project.rootDir, '.gradle/mis')
+        if (!misDir.exists()) {
+            return null
+        }
+
+        File misSourceManifest = new File(misDir, 'misSourceManifest.xml')
+        if (!misSourceManifest.exists()) {
+            return null
+        }
+
+        Document document = builderFactory.newDocumentBuilder().parse(misSourceManifest)
+        NodeList misSourceNodeList = document.getElementsByTagName("misSource")
+        if (misSourceNodeList.length == 0) {
+            return null
+        }
+        Element misSourceElement = (Element) misSourceNodeList.item(0)
+        NodeList projectNodeList = misSourceElement.getElementsByTagName("project")
+        for (int i = 0; i < projectNodeList.getLength(); i++) {
+            Element projectElement = (Element) projectNodeList.item(i)
+            def groupIdTemp = projectElement.getAttribute("groupId")
+            def artifactIdTemp = projectElement.getAttribute("artifactId")
+            if (groupId == groupIdTemp && artifactId == artifactIdTemp) {
+                return projectElement.getAttribute("misPath")
+            }
+        }
+        return null
     }
 
-    static boolean isAndroidPlugin(Project project) {
-        if (project.plugins.findPlugin("com.android.application") || project.plugins.findPlugin("android") ||
-                project.plugins.findPlugin("com.android.test")) {
-            return true
-        } else if (project.plugins.findPlugin("com.android.library") || project.plugins.findPlugin("android-library")) {
-            return true
+    static updateMisSourceManifest(Project project, List<Map<String, ?>> misSourceList) {
+        Map<String, ?> misSourceMap = new HashMap<>()
+        misSourceList.each {
+            misSourceMap.put(it.groupId + ":" + it.artifactId, it)
+        }
+
+        DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance()
+        File misDir = new File(project.rootDir, '.gradle/mis')
+        if (!misDir.exists()) {
+            misDir.mkdirs()
+        }
+
+        Document document
+        Element misSourceElement
+
+        File misSourceManifest = new File(misDir, 'misSourceManifest.xml')
+        if (misSourceManifest.exists()) {
+            document = builderFactory.newDocumentBuilder().parse(misSourceManifest)
+            NodeList misSourceNodeList = document.getElementsByTagName("misSource")
+            if (misSourceNodeList.length == 0) {
+                misSourceElement = document.createElement("misSource")
+            } else {
+                misSourceElement = (Element) misSourceNodeList.item(0)
+                NodeList projectNodeList = misSourceElement.getElementsByTagName("project")
+                for (int i = 0; i < projectNodeList.getLength(); i++) {
+                    Element projectElement = (Element) projectNodeList.item(i)
+                    def groupId = projectElement.getAttribute("groupId")
+                    def artifactId = projectElement.getAttribute("artifactId")
+
+                    def options = misSourceMap.get(groupId + ":" + artifactId)
+                    if (options != null) {
+                        options.added = true
+                        def path = projectElement.getAttribute("misPath")
+                        def misPath = getProjectMisSourceDirPath(project, options.microModuleName)
+                        if (path != misPath) {
+                            projectElement.setAttribute("misPath", misPath)
+                        }
+                    }
+                }
+            }
         } else {
-            return false
+            document = builderFactory.newDocumentBuilder().newDocument()
+            misSourceElement = document.createElement("misSource")
         }
-    }
 
-    static Map<String, ?> optionsFilter(Map<String, ?> options) {
-        Map<String, ?> optionsCopy = options.clone()
-        optionsCopy.remove("dependencies")
-        optionsCopy.remove("microModuleName")
-        return optionsCopy
-    }
-
-    static boolean compareMavenJar(Project project, Map<String, ?> options, String localPath) {
-        Map<String, ?> optionsCopy = optionsFilter(options)
-        String filePath = null
-        String fileName = optionsCopy.name + "-" + optionsCopy.version + ".jar"
-        def random = new Random()
-        def name = "mis_" + random.nextLong()
-        project.configurations.create(name)
-        project.dependencies.add(name, optionsCopy)
-        project.configurations.getByName(name).resolve().each {
-            if (it.name.endsWith(fileName)) {
-                filePath = it.absolutePath
+        misSourceList.each {
+            if (it.added == null) {
+                Element projectElement = document.createElement('project')
+                projectElement.setAttribute('groupId', it.groupId)
+                projectElement.setAttribute('artifactId', it.artifactId)
+                def misPath = getProjectMisSourceDirPath(project, it.microModuleName)
+                projectElement.setAttribute('misPath', misPath)
+                misSourceElement.appendChild(projectElement)
             }
         }
-        if(filePath == null) return false
-        return compareJar(localPath, filePath)
-    }
 
-    static boolean compareJar(String jar1, String jar2) {
-        try {
-            JarFile jarFile1 = new JarFile(jar1)
-            JarFile jarFile2 = new JarFile(jar2)
-            if (jarFile1.size() != jarFile2.size())
-                return false
-
-            Enumeration entries = jarFile1.entries()
-            while (entries.hasMoreElements()) {
-                JarEntry jarEntry1 = (JarEntry) entries.nextElement()
-                if (!jarEntry1.name.endsWith(".class"))
-                    continue
-
-                JarEntry jarEntry2 = jarFile2.getJarEntry(jarEntry1.getName())
-                if (jarEntry2 == null) {
-                    return false
-                }
-                InputStream stream1 = jarFile1.getInputStream(jarEntry1)
-                byte[] bytes1 = stream1.bytes
-                bytes1 = Arrays.copyOfRange(bytes1, 8, bytes1.length)
-                stream1.close()
-
-                InputStream stream2 = jarFile2.getInputStream(jarEntry2)
-                byte[] bytes2 = stream2.bytes
-                bytes2 = Arrays.copyOfRange(bytes2, 8, bytes2.length)
-                stream2.close()
-
-                if (!Arrays.equals(bytes1, bytes2)) {
-                    return false
-                }
-            }
-            jarFile1.close()
-            jarFile2.close()
-        } catch (IOException e) {
-            return false
-        }
-        return true
-    }
-
-    static void copyFile(File source, File target) {
-        try {
-            InputStream input = new FileInputStream(source)
-            OutputStream output = new FileOutputStream(target)
-            byte[] buf = new byte[1024]
-            int bytesRead
-            while ((bytesRead = input.read(buf)) > 0) {
-                output.write(buf, 0, bytesRead)
-            }
-            input.close()
-            output.close()
-        } catch (IOException e) {
-            e.printStackTrace()
-        }
-    }
-
-    static String getAARClassesJar(File input) {
-        def jarFile = new File(input.getParent(), 'classes.jar')
-        if (jarFile.exists()) return jarFile
-
-        def zip = new ZipFile(input)
-        zip.entries().each {
-            if (it.isDirectory()) return
-            if (it.name == 'classes.jar') {
-                def fos = new FileOutputStream(jarFile)
-                fos.write(zip.getInputStream(it).bytes)
-                fos.close()
-            }
-        }
-        zip.close()
-        return jarFile.absolutePath
-    }
-
-    static SourceState getLastModifiedSourceState(File lastModifiedManifestFile) {
-        SourceState source = new SourceState()
-        source.lastModifiedSourceFile = new HashMap<>()
-        if (!lastModifiedManifestFile.exists()) return source
-        DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance()
-        Document document = builderFactory.newDocumentBuilder().parse(lastModifiedManifestFile)
-        NodeList classesNodeList = document.getElementsByTagName("source")
-        if (classesNodeList.length == 0) {
-            return source.lastModifiedSourceFile
-        }
-        Element classesElement = (Element) classesNodeList.item(0)
-        source.version = classesElement.getAttribute("version")
-        NodeList fileNodeList = classesElement.getElementsByTagName("file")
-        for (int i = 0; i < fileNodeList.getLength(); i++) {
-            Element fileElement = (Element) fileNodeList.item(i)
-            SourceFile resourceFile = new SourceFile()
-            resourceFile.name = fileElement.getAttribute("name")
-            resourceFile.path = fileElement.getAttribute("path")
-            resourceFile.lastModified = fileElement.getAttribute("lastModified").toLong()
-            source.lastModifiedSourceFile.put(resourceFile.path, resourceFile)
-        }
-        return source
-    }
-
-    static saveCurrentModifiedManifest(File manifestFile, String version, Map<String, SourceFile> currentModifiedSourceMap) {
-        DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance()
-        Document documentTemp = builderFactory.newDocumentBuilder().newDocument()
-        // resources
-        Element sourceElement = documentTemp.createElement("source")
-        sourceElement.setAttribute("version", version)
-        currentModifiedSourceMap.each {
-            SourceFile sourceFile = it.value
-            Element fileElement = documentTemp.createElement("file")
-            fileElement.setAttribute("name", sourceFile.name)
-            fileElement.setAttribute("path", sourceFile.path)
-            fileElement.setAttribute("lastModified", sourceFile.lastModified.toString())
-            sourceElement.appendChild(fileElement)
-        }
-
-        // save
         Transformer transformer = TransformerFactory.newInstance().newTransformer()
         transformer.setOutputProperty(OutputKeys.INDENT, "yes")
         transformer.setOutputProperty(OutputKeys.CDATA_SECTION_ELEMENTS, "yes")
         transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2")
-        transformer.transform(new DOMSource(sourceElement), new StreamResult(manifestFile))
+        transformer.transform(new DOMSource(misSourceElement), new StreamResult(misSourceManifest))
     }
+
+    static String getProjectMisSourceDirPath(Project project, String microModule) {
+        def misPath = null
+        def type = "main"
+        BaseExtension android = project.extensions.getByName('android')
+        def obj = android.sourceSets.getByName(type)
+        obj.aidl.srcDirs.each {
+            def path = it.absolutePath
+            if (path.endsWith('mis')) {
+                if (microModule != null) {
+                    if (path.contains(microModule + "${File.separator}src${File.separator}main${File.separator}mis")) {
+                        misPath = path
+                    }
+                } else {
+                    misPath = path
+                }
+            }
+        }
+        return misPath
+    }
+
+    static setProjectMisSrcDirs(Project project) {
+        println '-- setProjectMisSrcDirs: ' + project.name
+        def type = "main"
+        BaseExtension android = project.extensions.getByName('android')
+        def obj = android.sourceSets.getByName(type)
+
+        obj.java.srcDirs.each {
+            println '-- ' + it.absolutePath
+            obj.aidl.srcDirs(it.absolutePath.replace('java', 'mis'))
+        }
+    }
+
+    static setProjectMisSourceFolder(Project project, List<Map<String, ?>> artifactSourceList) {
+        if (artifactSourceList == null || artifactSourceList.size() == 0) return
+
+        boolean isSync = false
+        if (project.getGradle().startParameter.taskNames.isEmpty()) {
+            isSync = true
+        }
+
+        def projectIml = project.file(project.name + '.iml')
+        DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance()
+        Document document = builderFactory.newDocumentBuilder().parse(projectIml)
+        NodeList moduleNodeList = document.getElementsByTagName("module")
+        if (moduleNodeList.length == 0) {
+            return
+        }
+
+        Element moduleElement = (Element) moduleNodeList.item(0)
+        NodeList componentNodeList = moduleElement.getElementsByTagName("component")
+        for (int i = 0; i < componentNodeList.getLength(); i++) {
+            Element componentElement = (Element) componentNodeList.item(i)
+            def name = componentElement.getAttribute("name")
+            if (name == 'NewModuleRootManager') {
+                NodeList contentNodeList = componentElement.getElementsByTagName("content")
+                if (contentNodeList.length == 0) {
+                    break
+                }
+
+                Element contentElement = (Element) contentNodeList.item(0)
+                artifactSourceList.each {
+                    def groupId = it.groupId
+                    def artifactId = it.artifactId
+                    def misPath = getMisPathFormManifest(project, groupId, artifactId)
+                    if (misPath == null) return
+
+                    def find = false
+                    NodeList sourceFolderNodeList = contentElement.getElementsByTagName("sourceFolder")
+                    for (int j = 0; j < sourceFolderNodeList.getLength(); j++) {
+                        Element sourceFolderElement = (Element) sourceFolderNodeList.item(j)
+                        if (sourceFolderElement.getAttribute('mis').equals(artifactId)) {
+                            def version = sourceFolderElement.getAttribute('version')
+                            if (version == "") {
+                                sourceFolderElement.setAttribute('version', "1")
+                            } else {
+                                sourceFolderElement.setAttribute('version', (Integer.valueOf(version) + 1) + "")
+                            }
+                            find = true
+                            break
+                        }
+                    }
+
+                    if (find) {
+                        return
+                    }
+
+                    misPath = FileUtils.toSystemIndependentPath(misPath)
+                    misPath = 'file://' + misPath
+
+                    Element sourceFolderElement = document.createElement('sourceFolder')
+                    sourceFolderElement.setAttribute('url', misPath)
+                    sourceFolderElement.setAttribute('isTestSource', 'false')
+                    sourceFolderElement.setAttribute('mis', artifactId)
+                    sourceFolderElement.setAttribute('version', '1')
+                    contentElement.appendChild(sourceFolderElement)
+                }
+
+                break
+            } else if (!isSync && name == 'FacetManager') {
+                NodeList facetNodeList = componentElement.getElementsByTagName("facet")
+                for (int j = 0; j < facetNodeList.length; j++) {
+                    Element facetElement = (Element) facetNodeList.item(j)
+                    def type = facetElement.getAttribute("type")
+                    if (type == 'android') {
+                        NodeList configurationNodeList = facetElement.getElementsByTagName('configuration')
+                        Element configurationElement = (Element) configurationNodeList.item(0)
+                        NodeList optionNodeList = configurationElement.getElementsByTagName('option')
+                        for (int k = 0; k < optionNodeList.length; k++) {
+                            Element optionElement = (Element) optionNodeList.item(k)
+                            if (optionElement.getAttribute('name') == 'ALLOW_USER_CONFIGURATION') {
+                                optionElement.setAttribute('value', 'true')
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Transformer transformer = TransformerFactory.newInstance().newTransformer()
+        transformer.setOutputProperty(OutputKeys.INDENT, "yes")
+        transformer.setOutputProperty(OutputKeys.CDATA_SECTION_ELEMENTS, "yes")
+        transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2")
+        transformer.transform(new DOMSource(moduleElement), new StreamResult(projectIml))
+    }
+
 }
