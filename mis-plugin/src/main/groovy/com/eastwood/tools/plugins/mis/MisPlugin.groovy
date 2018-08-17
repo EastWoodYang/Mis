@@ -49,7 +49,7 @@ class MisPlugin implements Plugin<Project> {
 
         project.dependencies.metaClass.misSource { Map<String, ?> options ->
             if (!initMisSrcDir) {
-                MisUtil.setProjectMisSrcDirs(project)
+                MisUtil.setProjectMisSourceDirs(project)
                 initMisSrcDir = true
             }
             misSourceList << options
@@ -63,11 +63,11 @@ class MisPlugin implements Plugin<Project> {
 
         project.afterEvaluate {
             if (!initMisSrcDir) {
-                MisUtil.setProjectMisSrcDirs(project)
+                MisUtil.setProjectMisSourceDirs(project)
             }
 
             MisUtil.updateMisSourceManifest(project, misSourceList)
-            MisUtil.setProjectMisSourceFolder(project, misProviderList)
+            MisUtil.addProjectExternalMisSourceDirs(project, misProviderList)
 
             if (mavenExtension == null || uploadMavenOptionList.size() == 0) {
                 return

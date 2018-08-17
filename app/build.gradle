@@ -34,7 +34,6 @@ dependencies {
 
     // implementation library-sdk which provide by library module.
     implementation misProvider('com.eastwood.demo:library-sdk')
-    implementation misProvider('com.eastwood.demo:library2-sdk')
     implementation misProvider('com.eastwood.demo:module-main-sdk')
     implementation misProvider('com.eastwood.demo:module-common-sdk')
 
