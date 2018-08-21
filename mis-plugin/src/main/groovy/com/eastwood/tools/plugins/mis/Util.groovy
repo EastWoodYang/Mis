@@ -20,10 +20,11 @@ class Util {
     }
 
     static Map<String, ?> optionsFilter(Map<String, ?> options) {
-        Map<String, ?> optionsCopy = options.clone()
-        optionsCopy.remove("dependencies")
-        optionsCopy.remove("microModuleName")
-        return optionsCopy
+        Map<String, ?> opts = new HashMap<>()
+        opts.put("group", options.groupId)
+        opts.put("name", options.artifactId)
+        opts.put("version", options.version)
+        return opts
     }
 
     static void copyFile(File source, File target) {

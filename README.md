@@ -57,8 +57,8 @@ apply plugin: 'mis'
 dependencies {
     ...
     implementation misSource(
-            group: 'com.eastwood.demo',
-            name: 'library-sdk'
+            groupId: 'com.eastwood.demo',
+            artifactId: 'library-sdk'
             // version: 1.0.0 // 上传maven时指定版本号
     )
 }
@@ -127,8 +127,8 @@ misMaven {
 dependencies {
     ...
     implementation misSource(
-        group: 'com.eastwood.demo',
-        name: 'library-sdk'
+        groupId: 'com.eastwood.demo',
+        artifactId: 'library-sdk'
         version: 1.0.0 // 上传maven时必须指定版本号，支持'version-SNAPSHOT'
     )
 }
@@ -143,8 +143,8 @@ dependencies {
     dependencies {
         ...
         implementation misSource(
-            group: 'com.eastwood.demo',
-            name: 'library-sdk',
+            groupId: 'com.eastwood.demo',
+            artifactId: 'library-sdk',
             version: '1.0.0',
             dependencies = ['com.google.code.gson:gson:2.8.1']
         )
@@ -156,8 +156,8 @@ dependencies {
 dependencies {
     ...
     implementation misSource(
-        group: 'com.eastwood.demo',
-        name: 'library-sdk',
+        groupId: 'com.eastwood.demo',
+        artifactId: 'library-sdk',
         version: '1.0.0',
         microModuleName: '**microModule name**',
         dependencies = ['com.google.code.gson:gson:2.8.1']
