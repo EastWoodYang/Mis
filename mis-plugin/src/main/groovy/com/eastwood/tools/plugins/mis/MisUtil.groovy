@@ -1,7 +1,6 @@
 package com.eastwood.tools.plugins.mis
 
 import com.android.build.gradle.BaseExtension
-import com.android.utils.FileUtils
 import org.gradle.api.Project
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -16,7 +15,7 @@ import javax.xml.transform.stream.StreamResult
 
 class MisUtil {
 
-    static String getMisPathFormManifest(Project project, String groupId, String artifactId) {
+    static String getMisSourceVersionFormManifest(Project project, String groupId, String artifactId) {
         DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance()
         File misDir = new File(project.rootDir, '.gradle/mis')
         if (!misDir.exists()) {
@@ -40,7 +39,7 @@ class MisUtil {
             def groupIdTemp = projectElement.getAttribute("groupId")
             def artifactIdTemp = projectElement.getAttribute("artifactId")
             if (groupId == groupIdTemp && artifactId == artifactIdTemp) {
-                return projectElement.getAttribute("misPath")
+                return projectElement.getAttribute("version")
             }
         }
         return null
@@ -78,10 +77,9 @@ class MisUtil {
                     def options = misSourceMap.get(groupId + ":" + artifactId)
                     if (options != null) {
                         options.added = true
-                        def path = projectElement.getAttribute("misPath")
-                        def misPath = getProjectMisSourceDirPath(project, options.microModuleName)
-                        if (path != misPath) {
-                            projectElement.setAttribute("misPath", misPath)
+                        def version = projectElement.getAttribute("version")
+                        if (version != options.version) {
+                            projectElement.setAttribute("version", options.version)
                         }
                     }
                 }
@@ -96,8 +94,7 @@ class MisUtil {
                 Element projectElement = document.createElement('project')
                 projectElement.setAttribute('groupId', it.groupId)
                 projectElement.setAttribute('artifactId', it.artifactId)
-                def misPath = getProjectMisSourceDirPath(project, it.microModuleName)
-                projectElement.setAttribute('misPath', misPath)
+                projectElement.setAttribute('version', it.version)
                 misSourceElement.appendChild(projectElement)
             }
         }
@@ -109,26 +106,6 @@ class MisUtil {
         transformer.transform(new DOMSource(misSourceElement), new StreamResult(misSourceManifest))
     }
 
-    static String getProjectMisSourceDirPath(Project project, String microModule) {
-        def misPath = null
-        def type = "main"
-        BaseExtension android = project.extensions.getByName('android')
-        def obj = android.sourceSets.getByName(type)
-        obj.aidl.srcDirs.each {
-            def path = it.absolutePath
-            if (path.endsWith('mis')) {
-                if (microModule != null) {
-                    if (path.contains(microModule + "${File.separator}src${File.separator}main${File.separator}mis")) {
-                        misPath = path
-                    }
-                } else {
-                    misPath = path
-                }
-            }
-        }
-        return misPath
-    }
-
     static setProjectMisSourceDirs(Project project) {
         def type = "main"
         BaseExtension android = project.extensions.getByName('android')
@@ -137,94 +114,6 @@ class MisUtil {
         obj.java.srcDirs.each {
             obj.aidl.srcDirs(it.absolutePath.replace('java', 'mis'))
         }
-    }
-
-//    static addProjectExternalMisSourceDirs(Project project, List<Map<String, ?>> artifactSourceList) {
-//        if (artifactSourceList == null || artifactSourceList.size() == 0) return
-//
-//        def type = "main"
-//        BaseExtension android = project.extensions.getByName('android')
-//        def obj = android.sourceSets.getByName(type)
-//
-//        for (Map<String, ?> options : artifactSourceList) {
-//            def misPath = getMisPathFormManifest(project, options.groupId, options.artifactId)
-//            if (misPath == null) continue
-//
-//            obj.aidl.srcDirs(misPath)
-//        }
-//
-//    }
-
-    static addProjectExternalMisSourceDirs(Project project, List<Map<String, ?>> artifactSourceList) {
-        if (artifactSourceList == null || artifactSourceList.size() == 0) return
-
-        def projectIml = project.file(project.name + '.iml')
-        DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance()
-        Document document = builderFactory.newDocumentBuilder().parse(projectIml)
-        NodeList moduleNodeList = document.getElementsByTagName("module")
-        if (moduleNodeList.length == 0) {
-            return
-        }
-
-        Element moduleElement = (Element) moduleNodeList.item(0)
-        NodeList componentNodeList = moduleElement.getElementsByTagName("component")
-        for (int i = 0; i < componentNodeList.getLength(); i++) {
-            Element componentElement = (Element) componentNodeList.item(i)
-            def name = componentElement.getAttribute("name")
-            if (name == 'NewModuleRootManager') {
-                NodeList contentNodeList = componentElement.getElementsByTagName("content")
-                if (contentNodeList.length == 0) {
-                    break
-                }
-
-                Element contentElement = (Element) contentNodeList.item(0)
-                artifactSourceList.each {
-                    def groupId = it.groupId
-                    def artifactId = it.artifactId
-                    def misPath = getMisPathFormManifest(project, groupId, artifactId)
-                    if (misPath == null) return
-
-                    def find = false
-                    NodeList sourceFolderNodeList = contentElement.getElementsByTagName("sourceFolder")
-                    for (int j = 0; j < sourceFolderNodeList.getLength(); j++) {
-                        Element sourceFolderElement = (Element) sourceFolderNodeList.item(j)
-                        if (sourceFolderElement.getAttribute('mis').equals(artifactId)) {
-                            def version = sourceFolderElement.getAttribute('version')
-                            if (version == "") {
-                                sourceFolderElement.setAttribute('version', "1")
-                            } else {
-                                sourceFolderElement.setAttribute('version', (Integer.valueOf(version) + 1) + "")
-                            }
-                            find = true
-                            break
-                        }
-                    }
-
-                    if (find) {
-                        return
-                    }
-
-                    misPath = FileUtils.toSystemIndependentPath(misPath)
-                    misPath = 'file://' + misPath
-
-                    Element sourceFolderElement = document.createElement('sourceFolder')
-                    sourceFolderElement.setAttribute('url', misPath)
-                    sourceFolderElement.setAttribute('isTestSource', 'false')
-                    sourceFolderElement.setAttribute('generated', 'true')
-                    sourceFolderElement.setAttribute('mis', artifactId)
-                    sourceFolderElement.setAttribute('version', '1')
-                    contentElement.appendChild(sourceFolderElement)
-                }
-
-                break
-            }
-        }
-
-        Transformer transformer = TransformerFactory.newInstance().newTransformer()
-        transformer.setOutputProperty(OutputKeys.INDENT, "yes")
-        transformer.setOutputProperty(OutputKeys.CDATA_SECTION_ELEMENTS, "yes")
-        transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2")
-        transformer.transform(new DOMSource(moduleElement), new StreamResult(projectIml))
     }
 
 }

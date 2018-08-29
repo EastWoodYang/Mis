@@ -12,7 +12,6 @@ class MisPlugin implements Plugin<Project> {
     MisMavenExtension mavenExtension
 
     List<Map<String, ?>> misSourceList
-    List<Map<String, ?>> misProviderList
     List<Map<String, ?>> uploadMavenOptionList
 
     void apply(Project project) {
@@ -23,7 +22,6 @@ class MisPlugin implements Plugin<Project> {
 
         this.project = project
         misSourceList = new ArrayList<>()
-        misProviderList = new ArrayList<>()
         uploadMavenOptionList = new ArrayList<>()
         mavenExtension = project.extensions.findByName("misMaven")
         if (mavenExtension == null) {
@@ -67,7 +65,6 @@ class MisPlugin implements Plugin<Project> {
             }
 
             MisUtil.updateMisSourceManifest(project, misSourceList)
-            MisUtil.addProjectExternalMisSourceDirs(project, misProviderList)
 
             if (mavenExtension == null || uploadMavenOptionList.size() == 0) {
                 return
@@ -129,18 +126,20 @@ class MisPlugin implements Plugin<Project> {
     }
 
     Object handleMisProvider(String groupId, String artifactId, String version) {
-        misProviderList.add([groupId: groupId, artifactId: artifactId])
-        if (version == null) {
-            String fileName = artifactId + ".jar"
-            File target = project.rootProject.file(".gradle/mis/" + groupId + "/" + fileName)
+        String fileName = artifactId + ".jar"
+        File target = project.rootProject.file(".gradle/mis/" + groupId + "/" + fileName)
+        if (target.exists()) {
             return project.files(target)
         } else {
-            String fileName = artifactId + ".jar"
-            File target = project.rootProject.file(".gradle/mis/" + groupId + "/" + fileName)
-            if (target.exists()) {
-                return project.files(target)
+            def misSourceVersion = MisUtil.getMisSourceVersionFormManifest(project, groupId, artifactId)
+            if(misSourceVersion == null || misSourceVersion == "") {
+                if(version == null) {
+                    throw new RuntimeException("Sync project with Gradle Files again.")
+                } else {
+                    return "${groupId}:${artifactId}:${version}"
+                }
             } else {
-                return "${groupId}:${artifactId}:${version}"
+                return "${groupId}:${artifactId}:${misSourceVersion}"
             }
         }
     }

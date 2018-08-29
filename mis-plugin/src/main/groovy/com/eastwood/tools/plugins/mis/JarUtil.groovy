@@ -93,7 +93,7 @@ class JarUtil {
     static boolean compareMavenJar(Project project, Map<String, ?> options, String localPath) {
         Map<String, ?> optionsCopy = Util.optionsFilter(options)
         String filePath = null
-        String fileName = optionsCopy.artifactId + "-" + optionsCopy.version + ".jar"
+        String fileName = options.artifactId + "-" + options.version + ".jar"
         def random = new Random()
         def name = "mis_" + random.nextLong()
         project.configurations.create(name)
