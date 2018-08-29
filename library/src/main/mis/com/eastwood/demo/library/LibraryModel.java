@@ -1,6 +1,6 @@
 package com.eastwood.demo.library;
 
-import com.google.gson.annotations.SerializedName;
+import com.google.gson.Gson;
 
 /**
  * @author eastwood
@@ -8,10 +8,10 @@ import com.google.gson.annotations.SerializedName;
  */
 public class LibraryModel {
 
-    @SerializedName("name")
     private String name;
 
     public String getName() {
+        Gson gson;
         return name;
     }
 

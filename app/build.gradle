@@ -3,10 +3,10 @@ apply plugin: 'com.android.application'
 apply plugin: 'mis'
 
 android {
-    compileSdkVersion 25
+    compileSdkVersion 27
     defaultConfig {
         minSdkVersion 14
-        targetSdkVersion 25
+        targetSdkVersion 27
         versionCode 1
         versionName "1.0"
     }
@@ -19,7 +19,7 @@ android {
 }
 
 dependencies {
-    implementation 'com.android.support:appcompat-v7:25.1.1'
+//    implementation 'com.android.support:appcompat-v7:25.1.1'
     implementation 'com.eastwood.common:auto-inject:1.0.0'
 
 
@@ -40,8 +40,6 @@ dependencies {
     // after library-sdk push to maven, you need specify a version.
     // e.g.
     // implementation misProvider('com.eastwood.demo:library-sdk-4:1.0.0')
-
-
 
 }
 
