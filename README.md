@@ -27,7 +27,7 @@ MIS - 模块接口服务（Module Interface Service）
 ```
 buildscript {
     dependencies {
-        classpath 'com.eastwood.tools.plugins:mis:1.1.0'
+        classpath 'com.eastwood.tools.plugins:mis:1.2.0'
     }
 }
 ```
