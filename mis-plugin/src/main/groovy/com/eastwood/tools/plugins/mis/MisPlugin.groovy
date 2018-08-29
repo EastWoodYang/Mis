@@ -134,7 +134,15 @@ class MisPlugin implements Plugin<Project> {
             def misSourceVersion = MisUtil.getMisSourceVersionFormManifest(project, groupId, artifactId)
             if(misSourceVersion == null || misSourceVersion == "") {
                 if(version == null) {
-                    throw new RuntimeException("Sync project with Gradle Files again.")
+                    project.gradle.buildFinished {
+                        def result = MisUtil.getMisSourceVersionFormManifest(project, groupId, artifactId)
+                        if(result == null) {
+                            throw new RuntimeException("Could not find " + groupId + ":" + artifactId + ".")
+                        } else {
+                            throw new RuntimeException("Please Sync Project with Gradle files again.")
+                        }
+                    }
+                    return []
                 } else {
                     return "${groupId}:${artifactId}:${version}"
                 }

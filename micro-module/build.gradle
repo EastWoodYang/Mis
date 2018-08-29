@@ -30,6 +30,7 @@ microModule {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation misProvider('com.eastwood.demo:library-sdk')
     implementation project(':mis-core')
 
 }
