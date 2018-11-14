@@ -51,6 +51,9 @@ class JarUtil {
         options.dependencies.each {
             project.dependencies.add(name, it)
         }
+        options.compileOnly.each {
+            project.dependencies.add(name, it)
+        }
         def classPath = []
         project.configurations.getByName(name).resolve().each {
             if (it.name.endsWith('.aar')) {
