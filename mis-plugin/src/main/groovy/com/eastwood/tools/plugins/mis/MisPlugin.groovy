@@ -131,14 +131,14 @@ class MisPlugin implements Plugin<Project> {
         if (target.exists()) {
             return project.files(target)
         } else {
-            def misSourceVersion = MisUtil.getMisSourceVersionFormManifest(project, groupId, artifactId)
-            if(misSourceVersion == null || misSourceVersion == "") {
+            MisSource misSource = MisUtil.getMisSourceFormManifest(project, groupId, artifactId)
+            if(misSource == null || misSource.version == "") {
                 if(version == null) {
                     project.gradle.buildFinished {
-                        def result = MisUtil.getMisSourceVersionFormManifest(project, groupId, artifactId)
-                        if(result == null) {
+                        misSource = MisUtil.getMisSourceFormManifest(project, groupId, artifactId)
+                        if(misSource == null) {
                             throw new RuntimeException("Could not find " + groupId + ":" + artifactId + ".")
-                        } else {
+                        } else if(!misSource.invalid && misSource.version == "") {
                             throw new RuntimeException("Please Sync Project with Gradle files again.")
                         }
                     }
@@ -147,7 +147,7 @@ class MisPlugin implements Plugin<Project> {
                     return "${groupId}:${artifactId}:${version}"
                 }
             } else {
-                return "${groupId}:${artifactId}:${misSourceVersion}"
+                return "${groupId}:${artifactId}:${misSource.version}"
             }
         }
     }
@@ -165,6 +165,7 @@ class MisPlugin implements Plugin<Project> {
         File releaseJar = JarUtil.packJavaSourceJar(project, options)
         if (releaseJar == null) {
             target.delete()
+            options.invalid = true
             return []
         }
 
@@ -190,6 +191,7 @@ class MisPlugin implements Plugin<Project> {
         def releaseJar = JarUtil.packJavaSourceJar(project, options)
         if (releaseJar == null) {
             target.delete()
+            options.invalid = true
             return []
         }
 

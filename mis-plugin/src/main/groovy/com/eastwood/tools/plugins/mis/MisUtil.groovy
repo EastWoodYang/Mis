@@ -15,7 +15,7 @@ import javax.xml.transform.stream.StreamResult
 
 class MisUtil {
 
-    static String getMisSourceVersionFormManifest(Project project, String groupId, String artifactId) {
+    static MisSource getMisSourceFormManifest(Project project, String groupId, String artifactId) {
         DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance()
         File misDir = new File(project.rootDir, '.gradle/mis')
         if (!misDir.exists()) {
@@ -39,7 +39,12 @@ class MisUtil {
             def groupIdTemp = projectElement.getAttribute("groupId")
             def artifactIdTemp = projectElement.getAttribute("artifactId")
             if (groupId == groupIdTemp && artifactId == artifactIdTemp) {
-                return projectElement.getAttribute("version")
+                MisSource misSource = new MisSource()
+                misSource.groupId = groupId
+                misSource.artifactId = artifactId
+                misSource.version = projectElement.getAttribute("version")
+                misSource.invalid = Boolean.valueOf(projectElement.getAttribute("invalid"))
+                return misSource
             }
         }
         return null
@@ -80,6 +85,7 @@ class MisUtil {
                         def version = projectElement.getAttribute("version")
                         if (version != options.version) {
                             projectElement.setAttribute("version", options.version)
+                            projectElement.setAttribute('invalid', options.invalid ? "true": "false")
                         }
                     }
                 }
@@ -95,6 +101,7 @@ class MisUtil {
                 projectElement.setAttribute('groupId', it.groupId)
                 projectElement.setAttribute('artifactId', it.artifactId)
                 projectElement.setAttribute('version', it.version)
+                projectElement.setAttribute('invalid', it.invalid ? "true": "false")
                 misSourceElement.appendChild(projectElement)
             }
         }
