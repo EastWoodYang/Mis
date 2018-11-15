@@ -1,6 +1,7 @@
 package com.eastwood.tools.plugins.mis
 
-import org.gradle.api.Project;
+import com.eastwood.tools.plugins.mis.extension.MisSource
+import org.gradle.api.Project
 
 class Util {
 
@@ -19,11 +20,11 @@ class Util {
         }
     }
 
-    static Map<String, ?> optionsFilter(Map<String, ?> options) {
+    static Map<String, ?> optionsFilter(MisSource misSource) {
         Map<String, ?> opts = new HashMap<>()
-        opts.put("group", options.groupId)
-        opts.put("name", options.artifactId)
-        opts.put("version", options.version)
+        opts.put("group", misSource.groupId)
+        opts.put("name", misSource.artifactId)
+        opts.put("version", misSource.version)
         return opts
     }
 
@@ -43,13 +44,14 @@ class Util {
         }
     }
 
-    static File getTypeDir(Project project, Map<String, ?> options) {
-        boolean isMicroModule = isMicroModule(project)
+    static File getTypeDir(Project project, MisSource misSource) {
         def misRoot = new File(project.projectDir, 'build/mis')
-        def typeDir = new File(misRoot, "main")
-        if (isMicroModule && options.microModuleName != null) {
-            typeDir = new File(misRoot, options.microModuleName)
+        def dirPath
+        if(isMicroModule(project)) {
+            dirPath = misSource.name.replace(":", "/")
+        } else {
+            dirPath = misSource.name
         }
-        return typeDir
+        return new File(misRoot, dirPath)
     }
 }

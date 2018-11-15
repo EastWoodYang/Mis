@@ -1,6 +1,7 @@
 package com.eastwood.tools.plugins.mis
 
 import com.android.build.gradle.BaseExtension
+import com.eastwood.tools.plugins.mis.extension.MisSource
 import org.gradle.api.Project
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -50,8 +51,8 @@ class MisUtil {
         return null
     }
 
-    static updateMisSourceManifest(Project project, List<Map<String, ?>> misSourceList) {
-        Map<String, ?> misSourceMap = new HashMap<>()
+    static updateMisSourceManifest(Project project, List<MisSource> misSourceList) {
+        Map<String, MisSource> misSourceMap = new HashMap<>()
         misSourceList.each {
             misSourceMap.put(it.groupId + ":" + it.artifactId, it)
         }
@@ -79,9 +80,10 @@ class MisUtil {
                     def groupId = projectElement.getAttribute("groupId")
                     def artifactId = projectElement.getAttribute("artifactId")
 
-                    def options = misSourceMap.get(groupId + ":" + artifactId)
+                    def key = groupId + ":" + artifactId
+                    def options = misSourceMap.get(key)
                     if (options != null) {
-                        options.added = true
+                        misSourceMap.remove(key)
                         def version = projectElement.getAttribute("version")
                         if (version != options.version) {
                             projectElement.setAttribute("version", options.version)
@@ -95,15 +97,14 @@ class MisUtil {
             misSourceElement = document.createElement("misSource")
         }
 
-        misSourceList.each {
-            if (it.added == null) {
-                Element projectElement = document.createElement('project')
-                projectElement.setAttribute('groupId', it.groupId)
-                projectElement.setAttribute('artifactId', it.artifactId)
-                projectElement.setAttribute('version', it.version)
-                projectElement.setAttribute('invalid', it.invalid ? "true": "false")
-                misSourceElement.appendChild(projectElement)
-            }
+        misSourceMap.each {
+            MisSource misSource = it.value
+            Element projectElement = document.createElement('project')
+            projectElement.setAttribute('groupId', misSource.groupId)
+            projectElement.setAttribute('artifactId', misSource.artifactId)
+            projectElement.setAttribute('version', misSource.version)
+            projectElement.setAttribute('invalid', misSource.invalid ? "true": "false")
+            misSourceElement.appendChild(projectElement)
         }
 
         Transformer transformer = TransformerFactory.newInstance().newTransformer()

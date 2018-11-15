@@ -1,5 +1,4 @@
 apply plugin: 'com.android.application'
-
 apply plugin: 'mis'
 
 android {
@@ -27,9 +26,8 @@ dependencies {
     // or
     // implementation 'com.eastwood.common:mis:1.0.0'
 
-//    implementation project(':library')
-//    implementation project(':library2')
-//    implementation project(':micro-module')
+    implementation project(':library')
+    implementation project(':micro-module')
 
 
     // implementation library-sdk which provide by library module.

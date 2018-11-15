@@ -1,10 +1,21 @@
+mis {
+    sourceSets {
+        "p_common:main" {
+            groupId 'com.eastwood.demo'
+            artifactId 'module-common-sdk'
+//            version '1.0.0-SNAPSHOT' // specify a version and upload to maven.
+
+            dependencies {
+                implementation 'com.google.code.gson:gson:2.8.1'
+            }
+        }
+
+    }
+
+}
+
+
 dependencies {
 //    implementation microModule(':you-created-micro-module-name')
-
-    implementation misSource(
-            microModuleName: 'p_common',
-            groupId: 'com.eastwood.demo',
-            artifactId: 'module-common-sdk'
-    )
-
+    implementation misProvider('com.eastwood.demo:module-common-sdk')
 }

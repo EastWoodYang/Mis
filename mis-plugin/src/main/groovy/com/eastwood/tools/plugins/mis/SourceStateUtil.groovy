@@ -1,6 +1,7 @@
 package com.eastwood.tools.plugins.mis
 
 import com.android.build.gradle.BaseExtension
+import com.eastwood.tools.plugins.mis.extension.MisSource
 import org.gradle.api.Project
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -15,18 +16,15 @@ import javax.xml.transform.stream.StreamResult;
 
 class SourceStateUtil {
 
-    static void updateSourceFileState(Project project, Map<String, ?> options) {
+    static void updateSourceFileState(Project project, MisSource misSource) {
         Map<String, SourceFile> currentModifiedSourceFileMap = new HashMap<>()
-        boolean isMicroModule = Util.isMicroModule(project)
         BaseExtension android = project.extensions.getByName('android')
-        def main = android.sourceSets.getByName('main')
-        main.aidl.srcDirs.each {
+        def sourceSets = android.sourceSets.getByName(misSource.flavorName)
+        sourceSets.aidl.srcDirs.each {
             if (!it.absolutePath.endsWith("mis")) return
 
-            if (isMicroModule) {
-                if (options.microModuleName == null) {
-                    filterMisSourceFileState(it, currentModifiedSourceFileMap)
-                } else if (options.microModuleName != null && it.absolutePath.endsWith(options.microModuleName + "${File.separator}src${File.separator}main${File.separator}mis")) {
+            if (misSource.microModuleName != null) {
+                if (it.absolutePath.endsWith(misSource.microModuleName + "${File.separator}src${File.separator + misSource.flavorName + File.separator}mis")) {
                     filterMisSourceFileState(it, currentModifiedSourceFileMap)
                 }
             } else {
@@ -34,30 +32,27 @@ class SourceStateUtil {
             }
         }
 
-        def typeDir = Util.getTypeDir(project, options)
+        def typeDir = Util.getTypeDir(project, misSource)
         def lastModifiedManifest = new File(typeDir, "lastModifiedManifest.xml")
-        saveCurrentModifiedManifest(lastModifiedManifest, options.version, currentModifiedSourceFileMap)
+        saveCurrentModifiedManifest(lastModifiedManifest, misSource.version, currentModifiedSourceFileMap)
     }
 
-    static boolean hasModifiedSourceFile(Project project, Map<String, ?> options) {
-        def typeDir = Util.getTypeDir(project, options)
+    static boolean hasModifiedSourceFile(Project project, MisSource misSource) {
+        def typeDir = Util.getTypeDir(project, misSource)
         def lastModifiedManifest = new File(typeDir, "lastModifiedManifest.xml")
         if (!lastModifiedManifest.exists()) {
             return true
         }
         SourceState sourceState = getLastModifiedSourceState(lastModifiedManifest)
 
-        boolean isMicroModule = Util.isMicroModule(project)
         BaseExtension android = project.extensions.getByName('android')
-        def main = android.sourceSets.getByName('main')
-        for (File it : main.aidl.srcDirs) {
+        def sourceSets = android.sourceSets.getByName(misSource.flavorName)
+        for (File it : sourceSets.aidl.srcDirs) {
             if (!it.absolutePath.endsWith("mis")) continue
 
             boolean result = false
-            if (isMicroModule) {
-                if (options.microModuleName == null) {
-                    result = findModifiedSource(it, sourceState.lastModifiedSourceFile)
-                } else if (options.microModuleName != null && it.absolutePath.endsWith(options.microModuleName + "${File.separator}src${File.separator}main${File.separator}mis")) {
+            if (misSource.microModuleName != null) {
+                if (it.absolutePath.endsWith(misSource.microModuleName + "${File.separator}src${File.separator + misSource.flavorName + File.separator}mis")) {
                     result = findModifiedSource(it, sourceState.lastModifiedSourceFile)
                 }
             } else {
@@ -86,7 +81,8 @@ class SourceStateUtil {
         }
     }
 
-    private static saveCurrentModifiedManifest(File manifestFile, String version, Map<String, SourceFile> currentModifiedSourceMap) {
+    private
+    static saveCurrentModifiedManifest(File manifestFile, String version, Map<String, SourceFile> currentModifiedSourceMap) {
         DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance()
         Document documentTemp = builderFactory.newDocumentBuilder().newDocument()
         // resources
@@ -133,7 +129,8 @@ class SourceStateUtil {
         return source
     }
 
-    private static boolean findModifiedSource(File file, Map<String, SourceFile> lastModifiedSourceFileMap) {
+    private
+    static boolean findModifiedSource(File file, Map<String, SourceFile> lastModifiedSourceFileMap) {
         if (file.isDirectory()) {
             for (File childFile : file.listFiles()) {
                 boolean result = findModifiedSource(childFile, lastModifiedSourceFileMap)
