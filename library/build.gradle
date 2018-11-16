@@ -27,7 +27,18 @@ mis {
             artifactId 'library-sdk'
 //            version '1.0.0-SNAPSHOT' // specify a version and upload to maven.
 
-            dependencies 'com.google.code.gson:gson:2.8.1'
+            dependencies {
+                implementation 'com.google.code.gson:gson:2.8.1'
+                // compileOnly 'com.google.code.gson:gson:2.8.1'
+            }
+        }
+    }
+
+    repository {
+        url "http://***/repository/android-dev/"
+        credentials {
+            username 'admin'
+            password '123456'
         }
     }
 
@@ -38,8 +49,6 @@ dependencies {
     implementation project(':mis-core') // or implementation 'com.eastwood.common:mis:1.0.0'
 
     implementation misProvider('com.eastwood.demo:library-sdk:1.0.0-SNAPSHOT')
-
-    implementation 'com.google.code.gson:gson:2.8.1'
 
     implementation 'com.eastwood.common:auto-inject:1.0.0'
 }

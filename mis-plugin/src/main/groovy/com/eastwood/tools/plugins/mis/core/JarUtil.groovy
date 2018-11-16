@@ -1,7 +1,7 @@
-package com.eastwood.tools.plugins.mis
+package com.eastwood.tools.plugins.mis.core
 
 import com.android.build.gradle.BaseExtension
-import com.eastwood.tools.plugins.mis.extension.MisSource
+import com.eastwood.tools.plugins.mis.core.extension.MisSource
 import org.gradle.api.Project
 
 import java.util.jar.JarEntry
@@ -11,7 +11,7 @@ import java.util.zip.ZipFile
 class JarUtil {
 
     static File packJavaSourceJar(Project project, MisSource misSource) {
-        def typeDir = Util.getTypeDir(project, misSource)
+        def typeDir = MisUtil.getTypeDir(project, misSource)
         typeDir.deleteDir()
         typeDir.mkdirs()
         def sourceDir = new File(typeDir, "source")
@@ -44,12 +44,17 @@ class JarUtil {
         def random = new Random();
         def name = "mis_" + random.nextLong()
         project.configurations.create(name)
-        misSource.dependencies.each {
-            project.dependencies.add(name, it)
+        if(misSource.dependencies.implementation != null) {
+            misSource.dependencies.implementation.each {
+                project.dependencies.add(name, it)
+            }
         }
-        misSource.compileOnly.each {
-            project.dependencies.add(name, it)
+        if(misSource.dependencies.compileOnly != null) {
+            misSource.dependencies.compileOnly.each {
+                project.dependencies.add(name, it)
+            }
         }
+
         def classPath = []
         project.configurations.getByName(name).resolve().each {
             if (it.name.endsWith('.aar')) {
@@ -66,7 +71,7 @@ class JarUtil {
     }
 
     static File packJavaDocSourceJar(Project project, MisSource misSource) {
-        def typeDir = Util.getTypeDir(project, misSource)
+        def typeDir = MisUtil.getTypeDir(project, misSource)
         def javaSource = new File(typeDir, "javaSource")
         javaSource.deleteDir()
         javaSource.mkdirs()
@@ -89,7 +94,7 @@ class JarUtil {
     }
 
     static boolean compareMavenJar(Project project, MisSource misSource, String localPath) {
-        Map<String, ?> optionsCopy = Util.optionsFilter(misSource)
+        Map<String, ?> optionsCopy = MisUtil.optionsFilter(misSource)
         String filePath = null
         String fileName = misSource.artifactId + "-" + misSource.version + ".jar"
         def random = new Random()
@@ -156,7 +161,7 @@ class JarUtil {
                 def targetParent = new File(sourceDir, packageName)
                 if (!targetParent.exists()) targetParent.mkdirs()
                 def target = new File(targetParent, file.name)
-                Util.copyFile(file, target)
+                MisUtil.copyFile(file, target)
                 argFiles << target.absolutePath
 
                 if (sourceFilter != null) {
@@ -177,7 +182,7 @@ class JarUtil {
                 def targetParent = new File(javaDocDir, packageName)
                 if (!targetParent.exists()) targetParent.mkdirs()
                 def target = new File(targetParent, file.name)
-                Util.copyFile(file, target)
+                MisUtil.copyFile(file, target)
             }
         }
     }

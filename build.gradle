@@ -15,12 +15,9 @@ buildscript {
         // mis
         classpath 'com.eastwood.tools.plugins:mis:1.2.0'
 
-
         // auto-inject
         classpath 'com.eastwood.tools.plugins:auto-inject:1.0.2'
 
-        // NOTE: Do not place your application dependencies here; they belong
-        // in the individual module build.gradle files
     }
 }
 
@@ -35,15 +32,4 @@ allprojects {
 
 task clean(type: Delete) {
     delete rootProject.buildDir
-}
-
-apply plugin: 'mis-maven'
-misMaven {
-    username = "****"
-    password = "****"
-    repository = "the repository you want to upload mis-sdk"
-    snapshotRepository = "the repository you want to upload mis-sdk-snapshot"
-
-
-    def localReleaseDest = "${buildDir}/release/${version}"
 }

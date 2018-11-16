@@ -1,11 +1,14 @@
 package com.eastwood.tools.plugins.mis
 
 import com.android.build.gradle.BaseExtension
-import com.eastwood.tools.plugins.mis.extension.DefaultMisExtension
-import com.eastwood.tools.plugins.mis.extension.MisExtension
-import com.eastwood.tools.plugins.mis.extension.MisSource
-import com.eastwood.tools.plugins.mis.extension.OnMisSourceListener
-import com.intellij.util.text.VersionComparatorUtil
+import com.eastwood.tools.plugins.mis.core.JarUtil
+import com.eastwood.tools.plugins.mis.core.MisUtil
+import com.eastwood.tools.plugins.mis.core.extension.MavenRepository
+import com.eastwood.tools.plugins.mis.core.extension.MisExtension
+import com.eastwood.tools.plugins.mis.core.extension.MisSource
+import com.eastwood.tools.plugins.mis.core.extension.OnMisSourceListener
+import com.eastwood.tools.plugins.mis.core.state.StateUtil
+import org.gradle.api.GradleException
 import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -14,38 +17,31 @@ import org.gradle.api.publish.maven.MavenPublication
 class MisPlugin implements Plugin<Project> {
 
     Project project
+    boolean isMicroModule
     boolean initMisSrcDir
 
-    MisMavenExtension mavenExtension
-
     List<MisSource> misSourceList
-    List<MisSource> uploadMavenOptionList
+    Map<String, MisSource> misSourcePublishMap
 
     void apply(Project project) {
 
-        if (!Util.isAndroidPlugin(project)) {
-            throw new RuntimeException("The android or android-library plugin must be applied to the project.")
+        if (!MisUtil.hasAndroidPlugin(project)) {
+            throw new GradleException("The android or android-library plugin must be applied to the project.")
         }
 
         this.project = project
         misSourceList = new ArrayList<>()
-        uploadMavenOptionList = new ArrayList<>()
-        mavenExtension = project.extensions.findByName("misMaven")
-        if (mavenExtension == null) {
-            mavenExtension = project.rootProject.extensions.findByName("misMaven")
-        }
-        def isMicroModule = Util.isMicroModule(project)
+        misSourcePublishMap = new HashMap<>()
+        isMicroModule = MisUtil.isMicroModule(project)
 
         OnMisSourceListener onMisSourceListener = new OnMisSourceListener() {
             @Override
             void onMisSourceSetsCreated(NamedDomainObjectContainer<MisSource> sourceSets) {
+                MisUtil.setProjectMisSourceDirs(project)
+                initMisSrcDir = true
+
                 BaseExtension android = project.extensions.getByName('android')
                 sourceSets.each {
-                    if (!initMisSrcDir) {
-                        MisUtil.setProjectMisSourceDirs(project)
-                        initMisSrcDir = true
-                    }
-
                     misSourceList << it
                     MisSource misSource = it
                     if (isMicroModule) {
@@ -67,40 +63,50 @@ class MisPlugin implements Plugin<Project> {
 
                         if (misSource.microModuleName != null) {
                             if (it.absolutePath.endsWith(misSource.microModuleName + "${File.separator}src${File.separator + misSource.flavorName + File.separator}mis")) {
-                                paths.add(it)
+                                paths.add(it.absolutePath)
                             }
                         } else {
-                            paths.add(it)
+                            paths.add(it.absolutePath)
                         }
                     }
                     misSource.paths = paths
 
                     if (misSource.version != null && !misSource.version.isEmpty()) {
-                        return handleMavenJar(project, misSource)
+                        handleMavenJar(project, misSource)
                     } else {
-                        return handleLocalJar(project, misSource)
+                        handleLocalJar(project, misSource)
                     }
                 }
             }
         }
-        project.extensions.create(MisExtension, 'mis', DefaultMisExtension, project, onMisSourceListener)
+        MisExtension misExtension = project.extensions.create('mis', MisExtension, project, onMisSourceListener)
 
-        project.dependencies.metaClass.misProvider { String value ->
-            println value
-            String[] values = value.split(":")
-            if (values.length >= 3) {
-                return handleMisProvider(values[0], values[1], values[2])
-            } else if (values.length == 2) {
-                return handleMisProvider(values[0], values[1], null)
+        project.dependencies.metaClass.misProvider { Object value ->
+            def groupId, artifactId, version
+            if (value instanceof String) {
+                String[] values = value.split(":")
+                if (values.length >= 3) {
+                    groupId = values[0]
+                    artifactId = values[1]
+                    version = values[2]
+                } else if (values.length == 2) {
+                    groupId = values[0]
+                    artifactId = values[1]
+                    version = null
+                }
+            } else if (value instanceof Map<String, ?>) {
+                groupId = value.groupId
+                artifactId = value.artifactId
+                version = value.version
+            }
+
+            if (groupId != null && artifactId != null) {
+                return handleMisProvider(groupId, artifactId, version)
             } else {
                 throw new IllegalArgumentException("'${value}' is illege argument of misProvider(), the following types/formats are supported:" +
                         "\n  - String or CharSequence values, for example 'org.gradle:gradle-core:1.0'." +
                         "\n  - Maps, for example [groupId: 'org.gradle', artifactId: 'gradle-core', version: '1.0'].")
             }
-        }
-
-        project.dependencies.metaClass.misProvider { Map<String, ?> options ->
-            return handleMisProvider(options.groupId, options.artifactId, options.version)
         }
 
         project.afterEvaluate {
@@ -110,61 +116,24 @@ class MisPlugin implements Plugin<Project> {
 
             MisUtil.updateMisSourceManifest(project, misSourceList)
 
-            if (mavenExtension == null || uploadMavenOptionList.size() == 0) {
+            if (misSourcePublishMap.size() == 0 || misExtension.repository == null) {
                 return
             }
 
             project.plugins.apply('maven-publish')
             def publishing = project.extensions.getByName('publishing')
             publishing.repositories {
-                if (mavenExtension.repository != null) {
-                    maven {
-                        name = 'Maven'
-                        url = mavenExtension.repository
-                        if (mavenExtension.username != null || mavenExtension.password != null) {
-                            credentials {
-                                username = mavenExtension.username
-                                password = mavenExtension.password
-                            }
-                        }
-                    }
-                }
-
-                if (mavenExtension.snapshotRepository != null) {
-                    maven {
-                        name = 'MavenSnapshot'
-                        url = mavenExtension.snapshotRepository
-                        if (mavenExtension.username != null || mavenExtension.password != null) {
-                            credentials {
-                                username = mavenExtension.username
-                                password = mavenExtension.password
-                            }
-                        }
+                maven {
+                    MavenRepository repository = misExtension.repository
+                    url = repository.url
+                    if (repository.credentials != null) {
+                        credentials repository.credentials
                     }
                 }
             }
 
-            uploadMavenOptionList.each {
-                MisSource misSource = it
-                def publicationName = 'Mis[' + misSource.artifactId + "]"
-                configPublication(misSource, publicationName)
-                String publishMavenTaskName = "publish" + publicationName + "PublicationToMavenRepository"
-                String publishMavenSnapshotTaskName = "publish" + publicationName + "PublicationToMavenSnapshotRepository"
-                project.tasks.whenTaskAdded {
-                    if (it.name == publishMavenTaskName || it.name == publishMavenSnapshotTaskName) {
-                        def taskName = 'compileMis[' + misSource.artifactId + ']Source'
-                        def compileTask = project.getTasks().findByName(taskName)
-                        if (compileTask == null) {
-                            compileTask = project.getTasks().create(taskName, CompileSourceTask.class)
-                            compileTask.misSource = misSource
-                            it.dependsOn compileTask
-                            it.doLast {
-                                File groupDir = project.rootProject.file(".gradle/mis/" + misSource.groupId)
-                                new File(groupDir, misSource.artifactId + ".jar").delete()
-                            }
-                        }
-                    }
-                }
+            misSourcePublishMap.each {
+                createPublishPublicationTask(it.value)
             }
         }
     }
@@ -180,6 +149,7 @@ class MisPlugin implements Plugin<Project> {
             if (misSource == null || misSource.version == "") {
                 if (version == null) {
                     result = []
+                    resultVersion = null
                 } else {
                     result = "${groupId}:${artifactId}:${version}"
                     resultVersion = version
@@ -192,80 +162,105 @@ class MisPlugin implements Plugin<Project> {
             project.gradle.buildFinished {
                 misSource = MisUtil.getMisSourceFormManifest(project, groupId, artifactId)
                 if (misSource == null) {
-                    throw new RuntimeException("Could not find " + groupId + ":" + artifactId + ".")
+                    throw new GradleException("Could not find " + groupId + ":" + artifactId + ".")
                 } else if (result == []) {
                     if (!misSource.invalid && misSource.version == "") {
-                        throw new RuntimeException("Please Sync Project with Gradle files again.")
+                        throw new GradleException("Please Sync Project with Gradle files again.")
                     }
-                } else if (VersionComparatorUtil.compare(misSource.version, resultVersion) > 0) {
-                    throw new RuntimeException("Please Sync Project with Gradle files again.")
+                } else if (misSource.version != resultVersion) {
+                    throw new GradleException("Please Sync Project with Gradle files again.")
                 }
             }
             return result
         }
     }
 
-    Object handleLocalJar(Project project, MisSource misSource) {
+    def handleLocalJar(Project project, MisSource misSource) {
         File targetGroup = project.rootProject.file(".gradle/mis/" + misSource.groupId)
-        targetGroup.mkdirs()
-        File target = new File(targetGroup, misSource.artifactId + ".jar")
-        if (target.exists()) {
-            boolean hasModifiedSource = SourceStateUtil.hasModifiedSourceFile(project, misSource)
-            if (!hasModifiedSource) {
-                return project.files(target)
-            }
-        }
-        File releaseJar = JarUtil.packJavaSourceJar(project, misSource)
-        if (releaseJar == null) {
-            target.delete()
-            misSource.invalid = true
-            return []
+        if (!targetGroup.exists()) {
+            targetGroup.mkdirs()
         }
 
-        SourceStateUtil.updateSourceFileState(project, misSource)
-        Util.copyFile(releaseJar, target)
-        return project.files(target)
+        File target = new File(targetGroup, misSource.artifactId + ".jar")
+        if (target.exists()) {
+            boolean hasModifiedSource = StateUtil.hasModifiedSourceFile(project, misSource)
+            if (!hasModifiedSource) {
+                return
+            }
+        }
+
+        File releaseJar = JarUtil.packJavaSourceJar(project, misSource)
+        if (releaseJar == null) {
+            misSource.invalid = true
+            if (target.exists()) {
+                target.delete()
+            }
+            return
+        }
+
+        StateUtil.updateSourceFileState(project, misSource)
+        MisUtil.copyFile(releaseJar, target)
     }
 
     Object handleMavenJar(Project project, MisSource misSource) {
+        boolean hasModifiedSource = StateUtil.hasModifiedSourceFile(project, misSource)
         File targetGroup = project.rootProject.file(".gradle/mis/" + misSource.groupId)
         File target = new File(targetGroup, misSource.artifactId + ".jar")
         if (target.exists()) {
-            if (!SourceStateUtil.hasModifiedSourceFile(project, misSource)) {
-                uploadMavenOptionList << misSource
-                return project.files(target)
+            if (!hasModifiedSource) {
+                misSourcePublishMap.put(misSource.artifactId, misSource)
+                return
             }
-        } else {
-            if (!SourceStateUtil.hasModifiedSourceFile(project, misSource)) {
-                return Util.optionsFilter(misSource)
-            }
+        } else if (!hasModifiedSource) {
+            return
         }
 
         def releaseJar = JarUtil.packJavaSourceJar(project, misSource)
         if (releaseJar == null) {
-            target.delete()
             misSource.invalid = true
-            return []
+            if (target.exists()) {
+                target.delete()
+            }
+            return
         }
 
         boolean equals = JarUtil.compareMavenJar(project, misSource, releaseJar.absolutePath)
         if (equals) {
             target.delete()
-            SourceStateUtil.updateSourceFileState(project, misSource)
-            return Util.optionsFilter(misSource)
+            StateUtil.updateSourceFileState(project, misSource)
         } else {
-            uploadMavenOptionList << misSource
-            SourceStateUtil.updateSourceFileState(project, misSource)
+            misSourcePublishMap.put(misSource.artifactId, misSource)
+            StateUtil.updateSourceFileState(project, misSource)
             targetGroup = project.rootProject.file(".gradle/mis/" + misSource.groupId)
             targetGroup.mkdirs()
             target = new File(targetGroup, misSource.artifactId + ".jar")
-            Util.copyFile(releaseJar, target)
-            return project.files(target)
+            MisUtil.copyFile(releaseJar, target)
         }
     }
 
-    def configPublication(MisSource misSource, publicationName) {
+    void createPublishPublicationTask(MisSource misSource) {
+        def publicationName = 'Mis[' + misSource.artifactId + "]"
+        configMisSourcePublication(misSource, publicationName)
+        String publishMavenTaskName = "publish" + publicationName + "PublicationToMavenRepository"
+        project.tasks.whenTaskAdded {
+            if (it.name == publishMavenTaskName) {
+                def taskName = 'compileMis[' + misSource.artifactId + ']Source'
+                def compileTask = project.getTasks().findByName(taskName)
+                if (compileTask == null) {
+                    compileTask = project.getTasks().create(taskName, CompileMisTask.class)
+                    compileTask.misSource = misSource
+                    compileTask.dependsOn 'clean'
+                    it.dependsOn compileTask
+                    it.doLast {
+                        File groupDir = project.rootProject.file(".gradle/mis/" + misSource.groupId)
+                        new File(groupDir, misSource.artifactId + ".jar").delete()
+                    }
+                }
+            }
+        }
+    }
 
+    void configMisSourcePublication(MisSource misSource, String publicationName) {
         def publishing = project.extensions.getByName('publishing')
         MavenPublication mavenPublication = publishing.publications.maybeCreate(publicationName, MavenPublication)
         mavenPublication.groupId = misSource.groupId
@@ -273,21 +268,23 @@ class MisPlugin implements Plugin<Project> {
         mavenPublication.version = misSource.version
         mavenPublication.pom.packaging = 'jar'
 
-        def typeDir = Util.getTypeDir(project, misSource)
+        def typeDir = MisUtil.getTypeDir(project, misSource)
         def outputsDir = new File(typeDir, "outputs")
         mavenPublication.artifact source: new File(outputsDir, "classes.jar")
         mavenPublication.artifact source: new File(outputsDir, "classes-source.jar"), classifier: 'sources'
 
-        if (misSource.dependencies != null && misSource.dependencies.size() > 0) {
-            def dependencies = misSource.dependencies
+        if (misSource.dependencies != null) {
             mavenPublication.pom.withXml {
                 def dependenciesNode = asNode().appendNode('dependencies')
-                dependencies.each {
-                    def gav = it.split(":")
-                    def dependencyNode = dependenciesNode.appendNode('dependency')
-                    dependencyNode.appendNode('groupId', gav[0])
-                    dependencyNode.appendNode('artifactId', gav[1])
-                    dependencyNode.appendNode('version', gav[2])
+                if (misSource.dependencies.implementation != null) {
+                    misSource.dependencies.implementation.each {
+                        def gav = it.split(":")
+                        def dependencyNode = dependenciesNode.appendNode('dependency')
+                        dependencyNode.appendNode('groupId', gav[0])
+                        dependencyNode.appendNode('artifactId', gav[1])
+                        dependencyNode.appendNode('version', gav[2])
+                        dependencyNode.appendNode('scope', 'implementation')
+                    }
                 }
             }
         }

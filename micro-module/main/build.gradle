@@ -7,15 +7,23 @@ mis {
 
             dependencies {
                 implementation 'com.google.code.gson:gson:2.8.1'
+                // compileOnly 'com.google.code.gson:gson:2.8.1'
             }
         }
 
+    }
+
+    repository {
+        url "http://***/repository/android-dev/"
+        credentials {
+            username 'admin'
+            password '123456'
+        }
     }
 
 }
 
 
 dependencies {
-//    implementation microModule(':you-created-micro-module-name')
     implementation misProvider('com.eastwood.demo:module-main-sdk')
 }

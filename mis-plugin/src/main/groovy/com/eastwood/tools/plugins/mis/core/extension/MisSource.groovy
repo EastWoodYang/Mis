@@ -1,4 +1,4 @@
-package com.eastwood.tools.plugins.mis.extension
+package com.eastwood.tools.plugins.mis.core.extension
 
 import org.gradle.util.ConfigureUtil
 
@@ -13,9 +13,7 @@ class MisSource {
     String artifactId
     String version
 
-    String[] dependencies
-    String[] compileOnly
-    MavenRepository repository
+    Dependencies dependencies
 
     Closure sourceFilter
 
@@ -37,25 +35,13 @@ class MisSource {
         this.version = version
     }
 
-    void dependencies(String... dependencies) {
-        this.dependencies = dependencies
-    }
-
-    void compileOnly(String... compileOnly) {
-        this.compileOnly = compileOnly
-    }
-
-    void repository(Closure closure) {
-        repository = new MavenRepository()
-        ConfigureUtil.configure(closure, repository)
+    void dependencies(Closure closure) {
+        dependencies = new Dependencies()
+        ConfigureUtil.configure(closure, dependencies)
     }
 
     void sourceFilter(Closure closure) {
         this.sourceFilter = closure
-    }
-
-    void invalid(boolean invalid) {
-        this.invalid = invalid
     }
 
 }
