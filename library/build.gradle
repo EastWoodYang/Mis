@@ -50,6 +50,8 @@ dependencies {
 
     implementation misProvider('com.eastwood.demo:library-sdk:1.0.0-SNAPSHOT')
 
+    implementation 'com.google.code.gson:gson:2.8.1'
+
     implementation 'com.eastwood.common:auto-inject:1.0.0'
 }
 
