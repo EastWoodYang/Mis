@@ -178,7 +178,11 @@ class MisUtil {
         def misRoot = new File(project.projectDir, 'build/mis')
         def dirPath
         if(isMicroModule(project)) {
-            dirPath = misSource.name.replace(":", "/")
+            if(misSource.name == 'main') {
+                dirPath = misSource.name + '/main'
+            } else if(misSource.name.contains(':')) {
+                dirPath = misSource.name.replace(':', '/')
+            }
         } else {
             dirPath = misSource.name
         }
