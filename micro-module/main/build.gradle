@@ -1,5 +1,5 @@
 mis {
-    sourceSets {
+    publications {
         main {
             groupId 'com.eastwood.demo'
             artifactId 'module-main-sdk'
@@ -11,14 +11,6 @@ mis {
             }
         }
 
-    }
-
-    repository {
-        url "http://***/repository/android-dev/"
-        credentials {
-            username 'admin'
-            password '123456'
-        }
     }
 
 }

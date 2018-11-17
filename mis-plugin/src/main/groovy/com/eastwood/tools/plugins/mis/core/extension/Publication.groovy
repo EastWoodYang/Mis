@@ -1,13 +1,16 @@
 package com.eastwood.tools.plugins.mis.core.extension
 
+import com.eastwood.tools.plugins.mis.core.SourceSet
 import org.gradle.util.ConfigureUtil
 
-class MisSource {
+class Publication {
 
     String name
-    String flavorName
+    String sourceSetName
     String microModuleName
-    List<String> paths
+    File buildDir
+
+    Map<String, SourceSet> sourceSets
 
     String groupId
     String artifactId
@@ -19,7 +22,7 @@ class MisSource {
 
     boolean invalid
 
-    MisSource(final String name) {
+    Publication(final String name) {
         this.name = name
     }
 

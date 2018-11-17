@@ -1,6 +1,6 @@
 mis {
-    sourceSets {
-        "p_common:main" {
+    publications {
+        'p_common:main' {
             groupId 'com.eastwood.demo'
             artifactId 'module-common-sdk'
 //            version '1.0.0-SNAPSHOT' // specify a version and upload to maven.
@@ -10,14 +10,6 @@ mis {
             }
         }
 
-    }
-
-    repository {
-        url "http://***/repository/android-dev/"
-        credentials {
-            username 'admin'
-            password '123456'
-        }
     }
 
 }

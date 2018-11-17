@@ -1,7 +1,7 @@
 package com.eastwood.tools.plugins.mis.core
 
 import com.android.build.gradle.BaseExtension
-import com.eastwood.tools.plugins.mis.core.extension.MisSource
+import com.eastwood.tools.plugins.mis.core.extension.Publication
 import org.gradle.api.Project
 
 import java.util.jar.JarEntry
@@ -10,30 +10,29 @@ import java.util.zip.ZipFile
 
 class JarUtil {
 
-    static File packJavaSourceJar(Project project, MisSource misSource) {
-        def typeDir = MisUtil.getTypeDir(project, misSource)
-        typeDir.deleteDir()
-        typeDir.mkdirs()
-        def sourceDir = new File(typeDir, "source")
+    static File packJavaSourceJar(Project project, Publication publication) {
+        publication.buildDir.deleteDir()
+        publication.buildDir.mkdirs()
+        def sourceDir = new File(publication.buildDir, "source")
         sourceDir.mkdirs()
-        def classesDir = new File(typeDir, "classes")
+        def classesDir = new File(publication.buildDir, "classes")
         classesDir.mkdirs()
-        def outputsDir = new File(typeDir, "outputs")
+        def outputsDir = new File(publication.buildDir, "outputs")
         outputsDir.mkdirs()
 
         def argFiles = []
 
         BaseExtension android = project.extensions.getByName('android')
-        def sourceSets = android.sourceSets.getByName(misSource.flavorName)
+        def sourceSets = android.sourceSets.getByName(publication.sourceSetName)
         sourceSets.aidl.srcDirs.each {
             if (!it.absolutePath.endsWith("mis")) return
 
-            if (misSource.microModuleName != null) {
-                if (it.absolutePath.endsWith(misSource.microModuleName + "${File.separator}src${File.separator + misSource.flavorName + File.separator}mis")) {
-                    filterJavaSource(it, it.absolutePath, sourceDir, argFiles, misSource.sourceFilter)
+            if (publication.microModuleName != null) {
+                if (it.absolutePath.endsWith(publication.microModuleName + "${File.separator}src${File.separator + publication.sourceSetName + File.separator}mis")) {
+                    filterJavaSource(it, it.absolutePath, sourceDir, argFiles, publication.sourceFilter)
                 }
             } else {
-                filterJavaSource(it, it.absolutePath, sourceDir, argFiles, misSource.sourceFilter)
+                filterJavaSource(it, it.absolutePath, sourceDir, argFiles, publication.sourceFilter)
             }
         }
 
@@ -44,13 +43,13 @@ class JarUtil {
         def random = new Random();
         def name = "mis_" + random.nextLong()
         project.configurations.create(name)
-        if(misSource.dependencies.implementation != null) {
-            misSource.dependencies.implementation.each {
+        if(publication.dependencies.implementation != null) {
+            publication.dependencies.implementation.each {
                 project.dependencies.add(name, it)
             }
         }
-        if(misSource.dependencies.compileOnly != null) {
-            misSource.dependencies.compileOnly.each {
+        if(publication.dependencies.compileOnly != null) {
+            publication.dependencies.compileOnly.each {
                 project.dependencies.add(name, it)
             }
         }
@@ -70,19 +69,18 @@ class JarUtil {
         return generateJavaSourceJar(classesDir, argFiles, classPath, target, source)
     }
 
-    static File packJavaDocSourceJar(Project project, MisSource misSource) {
-        def typeDir = MisUtil.getTypeDir(project, misSource)
-        def javaSource = new File(typeDir, "javaSource")
+    static File packJavaDocSourceJar(Project project, Publication publication) {
+        def javaSource = new File(publication.buildDir, "javaSource")
         javaSource.deleteDir()
         javaSource.mkdirs()
 
         BaseExtension android = project.extensions.getByName('android')
-        def sourceSets = android.sourceSets.getByName(misSource.flavorName)
+        def sourceSets = android.sourceSets.getByName(publication.sourceSetName)
         sourceSets.aidl.srcDirs.each {
             if (!it.absolutePath.endsWith("mis")) return
 
-            if (misSource.microModuleName != null) {
-                if (it.absolutePath.endsWith(misSource.microModuleName + "${File.separator}src${File.separator + misSource.flavorName + File.separator}mis")) {
+            if (publication.microModuleName != null) {
+                if (it.absolutePath.endsWith(publication.microModuleName + "${File.separator}src${File.separator + publication.sourceSetName + File.separator}mis")) {
                     filterJavaDocSource(it, it.absolutePath, javaSource)
                 }
             } else {
@@ -93,10 +91,10 @@ class JarUtil {
         return generateJavaDocSourceJar(javaSource)
     }
 
-    static boolean compareMavenJar(Project project, MisSource misSource, String localPath) {
-        Map<String, ?> optionsCopy = MisUtil.optionsFilter(misSource)
+    static boolean compareMavenJar(Project project, Publication publication, String localPath) {
+        Map<String, ?> optionsCopy = MisUtil.optionsFilter(publication)
         String filePath = null
-        String fileName = misSource.artifactId + "-" + misSource.version + ".jar"
+        String fileName = publication.artifactId + "-" + publication.version + ".jar"
         def random = new Random()
         def name = "mis_" + random.nextLong()
         project.configurations.create(name)

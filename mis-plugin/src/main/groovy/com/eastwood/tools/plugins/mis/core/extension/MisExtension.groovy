@@ -1,32 +1,30 @@
 package com.eastwood.tools.plugins.mis.core.extension
 
+import org.gradle.api.Action
 import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Project
-import org.gradle.util.ConfigureUtil
+import org.gradle.api.artifacts.dsl.RepositoryHandler
 
 class MisExtension {
 
     Project project
-    MavenRepository repository
+    NamedDomainObjectContainer<Publication> publications
+    Action<? super RepositoryHandler> configure
+    OnPublicationListener onPublicationListener
 
-    NamedDomainObjectContainer<MisSource> sourceSets
-
-    OnMisSourceListener onMisSourceListener
-
-    MisExtension(Project project, OnMisSourceListener listener) {
+    MisExtension(Project project, OnPublicationListener listener) {
         this.project = project
-        this.onMisSourceListener = listener
-        this.repository = new MavenRepository()
-        this.sourceSets = project.container(MisSource)
+        this.onPublicationListener = listener
+        this.publications = project.container(Publication)
     }
 
-    void repository(Closure closure) {
-        ConfigureUtil.configure(closure, repository)
+    void publications(Closure closure) {
+        this.publications.configure(closure)
+        onPublicationListener.onPublicationCreated(publications)
     }
 
-    void sourceSets(Closure closure) {
-        this.sourceSets.configure(closure)
-        onMisSourceListener.onMisSourceSetsCreated(sourceSets)
+    void repositories(Action<? super RepositoryHandler> configure) {
+        this.configure = configure
     }
 
 }

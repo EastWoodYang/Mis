@@ -21,11 +21,11 @@ android {
 }
 
 mis {
-    sourceSets {
+    publications {
         main {
             groupId 'com.eastwood.demo'
             artifactId 'library-sdk'
-//            version '1.0.0-SNAPSHOT' // specify a version and upload to maven.
+            version '1.0.0-SNAPSHOT' // specify a version and upload to maven.
 
             dependencies {
                 implementation 'com.google.code.gson:gson:2.8.1'
@@ -34,11 +34,13 @@ mis {
         }
     }
 
-    repository {
-        url "http://***/repository/android-dev/"
-        credentials {
-            username 'admin'
-            password '123456'
+    repositories {
+        maven {
+            url "http://***/repository/android-dev/"
+            credentials {
+                username 'admin'
+                password '123456'
+            }
         }
     }
 

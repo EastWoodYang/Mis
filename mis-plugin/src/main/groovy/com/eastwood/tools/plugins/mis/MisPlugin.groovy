@@ -1,13 +1,10 @@
 package com.eastwood.tools.plugins.mis
 
 import com.android.build.gradle.BaseExtension
-import com.eastwood.tools.plugins.mis.core.JarUtil
-import com.eastwood.tools.plugins.mis.core.MisUtil
-import com.eastwood.tools.plugins.mis.core.extension.MavenRepository
+import com.eastwood.tools.plugins.mis.core.*
 import com.eastwood.tools.plugins.mis.core.extension.MisExtension
-import com.eastwood.tools.plugins.mis.core.extension.MisSource
-import com.eastwood.tools.plugins.mis.core.extension.OnMisSourceListener
-import com.eastwood.tools.plugins.mis.core.state.StateUtil
+import com.eastwood.tools.plugins.mis.core.extension.OnPublicationListener
+import com.eastwood.tools.plugins.mis.core.extension.Publication
 import org.gradle.api.GradleException
 import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Plugin
@@ -16,12 +13,14 @@ import org.gradle.api.publish.maven.MavenPublication
 
 class MisPlugin implements Plugin<Project> {
 
+    PublicationManager publicationManager
+
     Project project
     boolean isMicroModule
     boolean initMisSrcDir
 
-    List<MisSource> misSourceList
-    Map<String, MisSource> misSourcePublishMap
+    List<Publication> publicationList
+    Map<String, Publication> publicationPublishMap
 
     void apply(Project project) {
 
@@ -29,57 +28,31 @@ class MisPlugin implements Plugin<Project> {
             throw new GradleException("The android or android-library plugin must be applied to the project.")
         }
 
-        this.project = project
-        misSourceList = new ArrayList<>()
-        misSourcePublishMap = new HashMap<>()
-        isMicroModule = MisUtil.isMicroModule(project)
+        publicationManager = PublicationManager.getInstance(project)
 
-        OnMisSourceListener onMisSourceListener = new OnMisSourceListener() {
+        this.project = project
+        this.publicationList = new ArrayList<>()
+        this.publicationPublishMap = new HashMap<>()
+        this.isMicroModule = MisUtil.isMicroModule(project)
+
+        OnPublicationListener onPublicationListener = new OnPublicationListener() {
             @Override
-            void onMisSourceSetsCreated(NamedDomainObjectContainer<MisSource> sourceSets) {
-                MisUtil.setProjectMisSourceDirs(project)
+            void onPublicationCreated(NamedDomainObjectContainer<Publication> publications) {
+                MisUtil.addMisSourceSets(project)
                 initMisSrcDir = true
 
-                BaseExtension android = project.extensions.getByName('android')
-                sourceSets.each {
-                    misSourceList << it
-                    MisSource misSource = it
-                    if (isMicroModule) {
-                        def result = misSource.name.split(":")
-                        if (result.length >= 1) {
-                            misSource.microModuleName = result[0]
-                        } else {
-                            // TODO
-                        }
-                        misSource.flavorName = result.length >= 1 ? "main" : result[1]
+                publications.each {
+                    initPublication(it)
+                    publicationList << it
+                    if (it.version != null && !it.version.isEmpty()) {
+                        handleMavenJar(project, it)
                     } else {
-                        misSource.flavorName = misSource.name
-                    }
-
-                    List<String> paths = new ArrayList<>()
-                    def flavorSourceSets = android.sourceSets.getByName(misSource.flavorName)
-                    flavorSourceSets.aidl.srcDirs.each {
-                        if (!it.absolutePath.endsWith("mis")) return
-
-                        if (misSource.microModuleName != null) {
-                            if (it.absolutePath.endsWith(misSource.microModuleName + "${File.separator}src${File.separator + misSource.flavorName + File.separator}mis")) {
-                                paths.add(it.absolutePath)
-                            }
-                        } else {
-                            paths.add(it.absolutePath)
-                        }
-                    }
-                    misSource.paths = paths
-
-                    if (misSource.version != null && !misSource.version.isEmpty()) {
-                        handleMavenJar(project, misSource)
-                    } else {
-                        handleLocalJar(project, misSource)
+                        handleLocalJar(project, it)
                     }
                 }
             }
         }
-        MisExtension misExtension = project.extensions.create('mis', MisExtension, project, onMisSourceListener)
+        MisExtension misExtension = project.extensions.create('mis', MisExtension, project, onPublicationListener)
 
         project.dependencies.metaClass.misProvider { Object value ->
             def groupId, artifactId, version
@@ -111,29 +84,21 @@ class MisPlugin implements Plugin<Project> {
 
         project.afterEvaluate {
             if (!initMisSrcDir) {
-                MisUtil.setProjectMisSourceDirs(project)
+                MisUtil.addMisSourceSets(project)
             }
 
-            MisUtil.updateMisSourceManifest(project, misSourceList)
-
-            if (misSourcePublishMap.size() == 0 || misExtension.repository == null) {
+            if (publicationPublishMap.size() == 0) {
                 return
             }
 
             project.plugins.apply('maven-publish')
             def publishing = project.extensions.getByName('publishing')
-            publishing.repositories {
-                maven {
-                    MavenRepository repository = misExtension.repository
-                    url = repository.url
-                    if (repository.credentials != null) {
-                        credentials repository.credentials
-                    }
-                }
+            if (misExtension.configure != null) {
+                publishing.repositories misExtension.configure
             }
 
-            misSourcePublishMap.each {
-                createPublishPublicationTask(it.value)
+            publicationPublishMap.each {
+                createPublishTask(it.value)
             }
         }
     }
@@ -145,8 +110,8 @@ class MisPlugin implements Plugin<Project> {
             return project.files(target)
         } else {
             def result, resultVersion
-            MisSource misSource = MisUtil.getMisSourceFormManifest(project, groupId, artifactId)
-            if (misSource == null || misSource.version == "") {
+            Publication publication = publicationManager.getPublication(groupId, artifactId)
+            if (publication == null || publication.version == "") {
                 if (version == null) {
                     result = []
                     resultVersion = null
@@ -155,19 +120,19 @@ class MisPlugin implements Plugin<Project> {
                     resultVersion = version
                 }
             } else {
-                result = "${groupId}:${artifactId}:${misSource.version}"
-                resultVersion = misSource.version
+                result = "${groupId}:${artifactId}:${publication.version}"
+                resultVersion = publication.version
             }
 
             project.gradle.buildFinished {
-                misSource = MisUtil.getMisSourceFormManifest(project, groupId, artifactId)
-                if (misSource == null) {
+                publication = publicationManager.getPublication(groupId, artifactId)
+                if (publication == null) {
                     throw new GradleException("Could not find " + groupId + ":" + artifactId + ".")
                 } else if (result == []) {
-                    if (!misSource.invalid && misSource.version == "") {
+                    if (!publication.invalid && publication.version == "") {
                         throw new GradleException("Please Sync Project with Gradle files again.")
                     }
-                } else if (misSource.version != resultVersion) {
+                } else if (publication.version != resultVersion) {
                     throw new GradleException("Please Sync Project with Gradle files again.")
                 }
             }
@@ -175,109 +140,163 @@ class MisPlugin implements Plugin<Project> {
         }
     }
 
-    def handleLocalJar(Project project, MisSource misSource) {
-        File targetGroup = project.rootProject.file(".gradle/mis/" + misSource.groupId)
+    def handleLocalJar(Project project, Publication publication) {
+        File targetGroup = project.rootProject.file(".gradle/mis/" + publication.groupId)
         if (!targetGroup.exists()) {
             targetGroup.mkdirs()
         }
 
-        File target = new File(targetGroup, misSource.artifactId + ".jar")
+        File target = new File(targetGroup, publication.artifactId + ".jar")
         if (target.exists()) {
-            boolean hasModifiedSource = StateUtil.hasModifiedSourceFile(project, misSource)
+            boolean hasModifiedSource = publicationManager.hasModified(publication)
             if (!hasModifiedSource) {
                 return
             }
         }
 
-        File releaseJar = JarUtil.packJavaSourceJar(project, misSource)
+        File releaseJar = JarUtil.packJavaSourceJar(project, publication)
         if (releaseJar == null) {
-            misSource.invalid = true
+            publication.invalid = true
             if (target.exists()) {
                 target.delete()
             }
             return
         }
 
-        StateUtil.updateSourceFileState(project, misSource)
         MisUtil.copyFile(releaseJar, target)
+        publicationManager.updatePublication(publication)
     }
 
-    Object handleMavenJar(Project project, MisSource misSource) {
-        boolean hasModifiedSource = StateUtil.hasModifiedSourceFile(project, misSource)
-        File targetGroup = project.rootProject.file(".gradle/mis/" + misSource.groupId)
-        File target = new File(targetGroup, misSource.artifactId + ".jar")
+    def handleMavenJar(Project project, Publication publication) {
+        boolean hasModifiedSource = publicationManager.hasModified(publication)
+        File targetGroup = project.rootProject.file(".gradle/mis/" + publication.groupId)
+        File target = new File(targetGroup, publication.artifactId + ".jar")
         if (target.exists()) {
             if (!hasModifiedSource) {
-                misSourcePublishMap.put(misSource.artifactId, misSource)
+                publicationPublishMap.put(publication.artifactId, publication)
                 return
             }
         } else if (!hasModifiedSource) {
             return
         }
 
-        def releaseJar = JarUtil.packJavaSourceJar(project, misSource)
+        def releaseJar = JarUtil.packJavaSourceJar(project, publication)
         if (releaseJar == null) {
-            misSource.invalid = true
+            publication.invalid = true
             if (target.exists()) {
                 target.delete()
             }
             return
         }
 
-        boolean equals = JarUtil.compareMavenJar(project, misSource, releaseJar.absolutePath)
+        boolean equals = JarUtil.compareMavenJar(project, publication, releaseJar.absolutePath)
         if (equals) {
             target.delete()
-            StateUtil.updateSourceFileState(project, misSource)
         } else {
-            misSourcePublishMap.put(misSource.artifactId, misSource)
-            StateUtil.updateSourceFileState(project, misSource)
-            targetGroup = project.rootProject.file(".gradle/mis/" + misSource.groupId)
-            targetGroup.mkdirs()
-            target = new File(targetGroup, misSource.artifactId + ".jar")
+            publicationPublishMap.put(publication.artifactId, publication)
+            targetGroup = project.rootProject.file(".gradle/mis/" + publication.groupId)
+            if (!targetGroup.exists()) {
+                targetGroup.mkdirs()
+            }
+            target = new File(targetGroup, publication.artifactId + ".jar")
             MisUtil.copyFile(releaseJar, target)
+        }
+        publicationManager.updatePublication(publication)
+    }
+
+    void initPublication(Publication publication) {
+        def buildMis = new File(project.projectDir, 'build/mis')
+        if (isMicroModule) {
+            def result = publication.name.split(":")
+            if (result.length >= 1) {
+                publication.microModuleName = result[0]
+            }
+            if (publication.microModuleName == null || publication.microModuleName == "") {
+                throw new IllegalArgumentException("Publication name '${publication.name}' is illegal. The correct format is '\${MicroModule Name}:\${SourceSet Name}', e.g. 'base:main' or 'base'.")
+            }
+
+            publication.sourceSetName = result.length >= 1 ? "main" : result[1]
+            if (publication.sourceSetName == '') {
+                publication.sourceSetName = 'main'
+            }
+            publication.buildDir = new File(buildMis, publication.microModuleName + '/' + publication.sourceSetName)
+        } else {
+            publication.sourceSetName = publication.name
+            publication.buildDir = new File(buildMis, publication.name)
+        }
+
+        List<String> paths = new ArrayList<>()
+        BaseExtension android = project.extensions.getByName('android')
+        def sourceSets = android.sourceSets.getByName(publication.sourceSetName)
+        sourceSets.aidl.srcDirs.each {
+            if (!it.absolutePath.endsWith("mis")) return
+
+            if (publication.microModuleName != null) {
+                if (it.absolutePath.endsWith(publication.microModuleName + "${File.separator}src${File.separator + publication.sourceSetName + File.separator}mis")) {
+                    paths.add(it.absolutePath)
+                }
+            } else {
+                paths.add(it.absolutePath)
+            }
+        }
+
+        publication.sourceSets = new HashMap<>()
+        paths.each {
+            SourceSet sourceSet = new SourceSet()
+            sourceSet.path = it
+            sourceSet.lastModifiedSourceFile = new HashMap<>()
+            project.fileTree(it).each {
+                if (it.name.endsWith('.java')) {
+                    SourceFile sourceFile = new SourceFile()
+                    sourceFile.path = it.path
+                    sourceFile.lastModified = it.lastModified()
+                    sourceSet.lastModifiedSourceFile.put(sourceFile.path, sourceFile)
+                }
+            }
+            publication.sourceSets.put(sourceSet.path, sourceSet)
         }
     }
 
-    void createPublishPublicationTask(MisSource misSource) {
-        def publicationName = 'Mis[' + misSource.artifactId + "]"
-        configMisSourcePublication(misSource, publicationName)
-        String publishMavenTaskName = "publish" + publicationName + "PublicationToMavenRepository"
+    void createPublishTask(Publication publication) {
+        def publicationName = 'Mis[' + publication.artifactId + "]"
+        createPublishingPublication(publication, publicationName)
+        String publishMavenRepositoryTaskName = "publish" + publicationName + "PublicationToMavenRepository"
+        String publishMavenLocalTaskName = "publish" + publicationName + "PublicationToMavenLocal"
         project.tasks.whenTaskAdded {
-            if (it.name == publishMavenTaskName) {
-                def taskName = 'compileMis[' + misSource.artifactId + ']Source'
+            if (it.name == publishMavenRepositoryTaskName || it.name == publishMavenLocalTaskName) {
+                def taskName = 'compileMis[' + publication.artifactId + ']Source'
                 def compileTask = project.getTasks().findByName(taskName)
                 if (compileTask == null) {
                     compileTask = project.getTasks().create(taskName, CompileMisTask.class)
-                    compileTask.misSource = misSource
+                    compileTask.publication = publication
                     compileTask.dependsOn 'clean'
                     it.dependsOn compileTask
                     it.doLast {
-                        File groupDir = project.rootProject.file(".gradle/mis/" + misSource.groupId)
-                        new File(groupDir, misSource.artifactId + ".jar").delete()
+                        File groupDir = project.rootProject.file(".gradle/mis/" + publication.groupId)
+                        new File(groupDir, publication.artifactId + ".jar").delete()
                     }
                 }
             }
         }
     }
 
-    void configMisSourcePublication(MisSource misSource, String publicationName) {
+    void createPublishingPublication(Publication publication, String publicationName) {
         def publishing = project.extensions.getByName('publishing')
         MavenPublication mavenPublication = publishing.publications.maybeCreate(publicationName, MavenPublication)
-        mavenPublication.groupId = misSource.groupId
-        mavenPublication.artifactId = misSource.artifactId
-        mavenPublication.version = misSource.version
+        mavenPublication.groupId = publication.groupId
+        mavenPublication.artifactId = publication.artifactId
+        mavenPublication.version = publication.version
         mavenPublication.pom.packaging = 'jar'
 
-        def typeDir = MisUtil.getTypeDir(project, misSource)
-        def outputsDir = new File(typeDir, "outputs")
+        def outputsDir = new File(publication.buildDir, "outputs")
         mavenPublication.artifact source: new File(outputsDir, "classes.jar")
         mavenPublication.artifact source: new File(outputsDir, "classes-source.jar"), classifier: 'sources'
 
-        if (misSource.dependencies != null) {
+        if (publication.dependencies != null) {
             mavenPublication.pom.withXml {
                 def dependenciesNode = asNode().appendNode('dependencies')
-                if (misSource.dependencies.implementation != null) {
-                    misSource.dependencies.implementation.each {
+                if (publication.dependencies.implementation != null) {
+                    publication.dependencies.implementation.each {
                         def gav = it.split(":")
                         def dependencyNode = dependenciesNode.appendNode('dependency')
                         dependencyNode.appendNode('groupId', gav[0])

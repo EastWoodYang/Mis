@@ -8,6 +8,4 @@ public interface ILibraryService {
 
     LibraryModel getLibraryInfo();
 
-
-
 }
