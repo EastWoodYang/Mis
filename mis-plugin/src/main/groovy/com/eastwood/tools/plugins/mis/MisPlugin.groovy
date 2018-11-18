@@ -54,7 +54,7 @@ class MisPlugin implements Plugin<Project> {
         }
         MisExtension misExtension = project.extensions.create('mis', MisExtension, project, onPublicationListener)
 
-        project.dependencies.metaClass.misProvider { Object value ->
+        project.dependencies.metaClass.misPublication { Object value ->
             def groupId, artifactId, version
             if (value instanceof String) {
                 String[] values = value.split(":")
@@ -74,9 +74,9 @@ class MisPlugin implements Plugin<Project> {
             }
 
             if (groupId != null && artifactId != null) {
-                return handleMisProvider(groupId, artifactId, version)
+                return handleMisPublication(groupId, artifactId, version)
             } else {
-                throw new IllegalArgumentException("'${value}' is illege argument of misProvider(), the following types/formats are supported:" +
+                throw new IllegalArgumentException("'${value}' is illege argument of misPublication(), the following types/formats are supported:" +
                         "\n  - String or CharSequence values, for example 'org.gradle:gradle-core:1.0'." +
                         "\n  - Maps, for example [groupId: 'org.gradle', artifactId: 'gradle-core', version: '1.0'].")
             }
@@ -103,7 +103,7 @@ class MisPlugin implements Plugin<Project> {
         }
     }
 
-    Object handleMisProvider(String groupId, String artifactId, String version) {
+    Object handleMisPublication(String groupId, String artifactId, String version) {
         String fileName = artifactId + ".jar"
         File target = project.rootProject.file(".gradle/mis/" + groupId + "/" + fileName)
         if (target.exists()) {

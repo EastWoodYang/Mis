@@ -16,5 +16,5 @@ mis {
 
 
 dependencies {
-    implementation misProvider('com.eastwood.demo:module-common-sdk')
+    implementation misPublication('com.eastwood.demo:module-common-sdk')
 }

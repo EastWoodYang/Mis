@@ -13,10 +13,6 @@ class CompileMisTask extends DefaultTask {
     @TaskAction
     void compileSource() {
         def project = getProject()
-
-        def outputsDir = new File(publication.buildDir, "outputs")
-        outputsDir.mkdirs()
-
         def releaseJar = JarUtil.packJavaSourceJar(project, publication)
         if (releaseJar == null) {
             throw new RuntimeException("nothing to push.")

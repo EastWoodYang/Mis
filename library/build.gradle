@@ -50,7 +50,7 @@ dependencies {
 
     implementation project(':mis-core') // or implementation 'com.eastwood.common:mis:1.0.0'
 
-    implementation misProvider('com.eastwood.demo:library-sdk:1.0.0-SNAPSHOT')
+    implementation misPublication('com.eastwood.demo:library-sdk:1.0.0-SNAPSHOT')
 
     implementation 'com.google.code.gson:gson:2.8.1'
 
