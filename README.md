@@ -74,23 +74,23 @@ mis {
         }
     }
 
-	repositories {
-	    maven {
-	        url "http://***"
-		    credentials {
-	            username '***'
-	            password '***'
-		    }
-	    }
-	}
+    repositories {
+        maven {
+            url "http://***"
+            credentials {
+                username '***'
+                password '***'
+            }
+        }
+    }
     ...
 }
 ```
-* 上传时需设置`version`
+* 发布时需设置`version`。
 
-*  上传用到的插件是`maven-publish`，其中`repositories`相关设置请查阅[# Maven Publish Plugin](https://docs.gradle.org/current/userguide/publishing_maven.html#publishing_maven:repositories)
+* 发布时内部用到的插件是`maven-publish`，其中`repositories`相关设置请查阅[# Maven Publish Plugin](https://docs.gradle.org/current/userguide/publishing_maven.html#publishing_maven:repositories)
 
-**Gradle Sync**后，打开Gradle Tasks View，选择**publishMis[...]PublicationToMavenRepository**执行上传任务。
+**Gradle Sync**后，打开Gradle Tasks View，选择**publishMis[...]PublicationToMavenRepository**执行发布任务。
 
 <img src='https://github.com/EastWoodYang/Mis/blob/master/picture/3.png'/>
 
@@ -176,7 +176,7 @@ dependencies {
 当`mis`目录下类发生实质性的修改后（生成不同的jar包），在当前工程Sync&Build的时，会在`.gradle/mis`下的重新生成jar包，接口所在的模块不管`publication`中是否设置`version`，都使用`.gradle/mis`下的jar包。如果其他模块通过misPublication声明对其依赖，不管`misPublication`中是否设置的`version`，都会使用`.gradle/mis`下的jar包。
 
 #### 为什么在Gradle Tasks View中找不到`publishing`相关发布Task？
-请检查对应的`publication`是否已经设置的`version`，以及是否添加相关`repositories`。
+初次发布时，请检查对应的`publication`是否已经设置的`version`，以及是否添加相关`repositories`。当发布之后，当`mis`目录下的类发生实质性的修改后，才会有`publishing`相关发布Task。
 
 ## License
 
