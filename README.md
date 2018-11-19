@@ -1,195 +1,185 @@
+
 # MIS
-MIS - 模块接口服务（Module Interface Service）
+模块接口服务（Module Interface Service）
+MIS主要解决的问题是如何在一个模块内维护其对外暴露的接口（包括打包发布），而不是把接口和接口实现分离到两个不同的模块。
 
-模块A对外暴露SDK（接口+数据Model），在运行时，通过接口将对应的接口服务注册到服务容器中。
-
-模块B引用模块A对外暴露的SDK，通过SDK中的接口在服务容器中查找对应的接口服务并调用。
-
-基于上述，MIS需要解决的问题：
-
-* 模块如何对外暴露SDK
-* 如何通过接口查找对应的接口服务
-
-**模块如何对外暴露SDK**
-
-这里所述的SDK对应的就是一个jar包，其实就是Android module中，打一个包含接口和数据model的jar包。
-
-**如何通过接口查找对应的服务**
-
-维护一个Map，接口为key, 对应的接口服务为value，是不是就可以了？
-
+<img src='https://github.com/EastWoodYang/Mis/blob/master/picture/1.png'/>
 
 ## Usage
 
 #### 引用 mis 插件
 
-在根项目的build.gradle中添加 **mis 插件**的引用：
+在根项目的build.gradle中添加mis插件的**classpath**：
 ```
 buildscript {
     dependencies {
+		...
         classpath 'com.eastwood.tools.plugins:mis:1.2.0'
     }
 }
 ```
 
-在模块的build.gradle中添加**mis 插件**：
+在模块的build.gradle中添加**mis插件**：
 ```
-apply plugin: 'mis' 
+...
+apply plugin: 'mis'
 ```
 
 #### 创建 mis 目录
 
-在**src/main/java** 同级目录，创建**mis**文件夹
+**Gradle Sync**后，在**java**同级目录创建**mis**文件夹
 
-![](https://user-gold-cdn.xitu.io/2018/7/30/164eab1718831a1e?w=270&h=321&f=png&s=6663)
+<img src='https://github.com/EastWoodYang/Mis/blob/master/picture/2.png'/>
 
-**定义接口和数据Model，实现对应接口服务**
+#### 定义接口，并实现接口服务
 
-直接在**mis**文件夹下，创建对应的包名、接口类和数据Model（即对外暴露SDK）。并在**java**文件夹下，实现对应的接口服务。
+直接在**mis**文件夹下，创建对应的包名、接口类和数据Model。并在**java**文件夹下实现接口服务。
+<img src='https://github.com/EastWoodYang/Mis/blob/master/picture/1.png'/>
 
-![接口+数据Model](https://user-gold-cdn.xitu.io/2018/7/30/164eab5630a021d4?w=308&h=421&f=png&s=10071)
-
-#### 声明当前模块的sdk
-
-在模块 build.gradle 中dependencies中,通过 `misSource` 声明，例如：
-
+#### 配置mis相对应的publication
 ```
-dependencies {
+mis {
+    publications {
+        main {
+            groupId 'com.eastwood.demo'
+            artifactId 'library-sdk'
+			// version '1.0.0-SNAPSHOT'
+
+            dependencies {
+                compileOnly 'com.google.code.gson:gson:2.8.1'
+            }
+        }
+    }
     ...
-    implementation misSource(
-            groupId: 'com.eastwood.demo',
-            artifactId: 'library-sdk'
-            // version: 1.0.0 // 上传maven时指定版本号
-    )
 }
 ```
 
-#### 注册服务
+* `main`指的是`src/main/java`中的`main`，除了`main`之外，其值还可以为 build types和product flavors对应的值，即对应目录下的mis。比如与`src/debug/java`对应的`src/debug/mis`。
 
-在模块build.gradle中添加mis服务容器库引用：
+* `groupId`、`artifactId`、`version`对应的是Maven的[GAV](https://maven.apache.org/guides/mini/guide-naming-conventions.html)。**初次配置时，先不设置`version`。**
 
+* 在`dependencies`中可声明该mis编译和运行时需用到的第三方库，仅支持`compileOnly`和`implementation`。
+
+####  发布至Maven
+```
+mis {
+    publications {
+        main {
+            groupId 'com.eastwood.demo'
+            artifactId 'library-sdk'
+			version '1.0.0-SNAPSHOT'
+            ...
+        }
+    }
+
+	repositories {
+	    maven {
+	        url "http://***"
+		    credentials {
+	            username '***'
+	            password '***'
+		    }
+	    }
+	}
+    ...
+}
+```
+* 上传时需设置`version`
+
+*  上传用到的插件是`maven-publish`，其中`repositories`相关设置请查阅[# Maven Publish Plugin](https://docs.gradle.org/current/userguide/publishing_maven.html#publishing_maven:repositories)
+
+**Gradle Sync**后，打开Gradle Tasks View，选择**publishMis[...]PublicationToMavenRepository**执行上传任务。
+
+<img src='https://github.com/EastWoodYang/Mis/blob/master/picture/3.png'/>
+
+其中publishMis[...]PublicationToMavenLocal 是发布至本地maven。如果使用本地maven，请将`mavenLocal()`添加至根项目的build.gradle中，比如：
+```
+allprojects {
+    repositories {
+        google()
+        jcenter()
+        mavenLocal()
+    }
+}
+```
+
+***
+上文介绍了如何通过mis插件创建接口并发布到maven，接下来介绍接口的注册和调用。
+
+####  注册接口服务
+注册接口需要有个服务容器来管理接口和接口的实现对象。mis提供了一个简单的**MisService**服务容器，可根据自己项目实际情况自行选用。
+
+在模块build.gradle中添加**MisService**服务容器库的引用：
 ```
 dependencies {
     implementation 'com.eastwood.common:mis:1.0.0'
 }
 ```
 
-
-然后，在**MisService**（服务容器）注册服务，可以使用 服务接口 + 服务接口的实现对象 **或** 服务接口的实现类 进行注册，例如：
-
+在**MisService**服务容器中注册服务，可以使用 服务接口 + 服务接口的实现对象 **或** 服务接口的实现类 进行注册，例如：
 ```
 // 服务接口 + 服务接口的实现对象
 MisService.register(ILibraryService.class, new LibraryService());
- 
+
 // 服务接口 + 服务接口的实现类
 MisService.register(ILibraryService.class, LibraryService.class);
 ```
 
-#### 获取服务
+在Demo样例中，接口所在的模块通过AutoInject在编译期主动注册接口。（这推荐下# **[AutoInject](https://github.com/EastWoodYang/AutoInject)**）
 
-在其他模块build.gradle中添加mis库，以及通过 `misProvider` 引用sdk：
+#### 获取接口服务
+
+在其他模块build.gradle中添加mis库，以及发布至maven的接口库：
 
 ```
 dependencies {
     implementation 'com.eastwood.common:mis:1.0.0'
-    implementation misProvider('com.eastwood.demo:library-sdk')
+    implementation 'com.eastwood.demo:library-sdk:1.0.0-SNAPSHOT'
 }
 ```
 
-
-Sync后，就可以通过接口在**MisService**服务容器中查找对应的接口服务并调用，例如：
-
+Gradle Sync后，就可以通过接口在**MisService**服务容器中查找对应的接口服务并调用，比如：
 ```
 ILibraryService libraryService = MisService.getService(ILibraryService.class);
 libraryService.getLibraryInfo()
 ```
 
-## 上传Maven
-接口调试结束后，需将`mis`文件夹打包上传至Maven。
-
-#### 配置 Maven
-在根项目的 build.gradle 或 模块 build.gradle 中添加配置：
-
-```
-apply plugin: 'mis-maven'
- 
-misMaven {
-    username = '用户名'
-    password = '密码'
-    repository = 'maven上对应的仓库地址'
-    snapshotRepository = 'maven上对应的快照仓库地址'
-}
-```
-
-#### 配置 GAV
-
-```
-dependencies {
-    ...
-    implementation misSource(
-        groupId: 'com.eastwood.demo',
-        artifactId: 'library-sdk'
-        version: 1.0.0 // 上传maven时必须指定版本号，支持'version-SNAPSHOT'
-    )
-}
-```
-
-除了[GAV](https://maven.apache.org/guides/mini/guide-naming-conventions.html)等必配项，还有以下配置：
-* **dependencies** String[] 类型
-  
-    若上传的sdk引用其他类库，需配置对应的GAV，例如:
-
-    ```
-    dependencies {
-        ...
-        implementation misSource(
-            groupId: 'com.eastwood.demo',
-            artifactId: 'library-sdk',
-            version: '1.0.0',
-            dependencies = ['com.google.code.gson:gson:2.8.1']
-        )
-    }
-    ```
-
-另外，在[**MicroModule**](https://github.com/EastWoodYang/MicroModule)目录结构下的配置
-```
-dependencies {
-    ...
-    implementation misSource(
-        groupId: 'com.eastwood.demo',
-        artifactId: 'library-sdk',
-        version: '1.0.0',
-        microModuleName: '**microModule name**',
-        dependencies = ['com.google.code.gson:gson:2.8.1']
-    )
-}
-```
-
-#### 执行上传Task
-打开Gradle Tasks View，在对应项目执行上传任务。
-
-* publishMis[...]PublicationToMavenRepository 对应上传至repository
-* publishMis[...]PublicationToMavenSnapshotRepository 对应上传至snapshotRepository
-
-![上传SDK](https://user-gold-cdn.xitu.io/2018/8/4/1650254af594c79b?w=502&h=308&f=png&s=11669)
-
-上传成功之后，需指定或更新 `misProvider` 中的version。
-```
-dependencies {
-    implementation 'com.eastwood.common:mis:1.0.0'
-    implementation misProvider('com.eastwood.demo:library-sdk:1.0.0')
-}
-```
-    
 ## QA
-#### 1. 没有Maven私服，怎么办？
+#### mis目录下的类会参与编译吗？
+不会。虽然`mis`目录下的类能被`java`目录下的类直接引用，但不会参与编译，真正参与编译的是该`mis`目录生成的jar包，其位于当前工程`.gradle/mis`下。在当前工程Sync&Build的时候，mis插件会对这些配置了publication的`mis`目录进行编译打包生成jar包，并且依赖该jar包。
 
-    不指定misSource 和 misProvider 中的version。
-    
+`mis`目录下的类之所以能被`java`目录下的类直接引用，是因为`mis`目录被设置为sourceSets aidl的src目录，而Android studio对sourceSets aidl的src目录有特别支持。
+
+#### 没有Maven私服，所有模块都在一个工程下，其他模块怎么引用接口？
+不设置`publication`的`version`。通过`misPublication`声明依赖，比如：
+```
+dependencies {
+    ...
+    implementation misPublication('com.eastwood.demo:library-sdk')
+}
+```
+`misPublication`运行机理是会自动在当前工程`.gradle/mis`下查找是否有对应的mis提供的jar包。如果有，就使用对应的mis提供的jar包；如果没有且指定了`version`，就使用maven上的jar包。
+
+#### 将接口发布到maven后，其他模块通过misPublication声明依赖，那jar包用的是`.gradle/mis`下的还是maven上的？
+接口被发布到maven后，其`.gradle/mis`下的jar包会被删除，接口所在的模块根据`publication`中设置的GAV使用maven上的jar包。如果其他模块通过misPublication声明对其依赖，比如：
+```
+dependencies {
+    ...
+    implementation misPublication('com.eastwood.demo:library-sdk')
+    // 或 implementation misPublication('com.eastwood.demo:library-sdk:1.0.0-SNAPSHOT')
+}
+```
+不管`misPublication`中是否设置了的`version`，都会使用maven上的jar包，其版本同接口所在的模块`publication`中的GAV。
+
+当`mis`目录下类发生实质性的修改后（生成不同的jar包），在当前工程Sync&Build的时，会在`.gradle/mis`下的重新生成jar包，接口所在的模块不管`publication`中是否设置`version`，都使用`.gradle/mis`下的jar包。如果其他模块通过misPublication声明对其依赖，不管`misPublication`中是否设置的`version`，都会使用`.gradle/mis`下的jar包。
+
+#### 为什么在Gradle Tasks View中找不到`publishing`相关发布Task？
+请检查对应的`publication`是否已经设置的`version`，以及是否添加相关`repositories`。
+
 ## License
 
 ```
-   Copyright 2018 EastWood Yang
+   Copyright 2018 EastWood Yang
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
