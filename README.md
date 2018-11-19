@@ -1,6 +1,7 @@
 
 # MIS
 模块接口服务（Module Interface Service）
+
 MIS主要解决的问题是如何在一个模块内维护其对外暴露的接口（包括打包发布），而不是把接口和接口实现分离到两个不同的模块。
 
 <img src='https://github.com/EastWoodYang/Mis/blob/master/picture/1.png'/>
@@ -13,7 +14,7 @@ MIS主要解决的问题是如何在一个模块内维护其对外暴露的接�
 ```
 buildscript {
     dependencies {
-		...
+        ...
         classpath 'com.eastwood.tools.plugins:mis:1.2.0'
     }
 }
@@ -34,6 +35,7 @@ apply plugin: 'mis'
 #### 定义接口，并实现接口服务
 
 直接在**mis**文件夹下，创建对应的包名、接口类和数据Model。并在**java**文件夹下实现接口服务。
+
 <img src='https://github.com/EastWoodYang/Mis/blob/master/picture/1.png'/>
 
 #### 配置mis相对应的publication
@@ -43,7 +45,7 @@ mis {
         main {
             groupId 'com.eastwood.demo'
             artifactId 'library-sdk'
-			// version '1.0.0-SNAPSHOT'
+            // version '1.0.0-SNAPSHOT'
 
             dependencies {
                 compileOnly 'com.google.code.gson:gson:2.8.1'
@@ -56,7 +58,7 @@ mis {
 
 * `main`指的是`src/main/java`中的`main`，除了`main`之外，其值还可以为 build types和product flavors对应的值，即对应目录下的mis。比如与`src/debug/java`对应的`src/debug/mis`。
 
-* `groupId`、`artifactId`、`version`对应的是Maven的[GAV](https://maven.apache.org/guides/mini/guide-naming-conventions.html)。**初次配置时，先不设置`version`。**
+* `groupId`、`artifactId`、`version`对应的是Maven的[GAV](https://maven.apache.org/guides/mini/guide-naming-conventions.html)。**初次配置时不设置`version`，发布至maven时设置`version`。**
 
 * 在`dependencies`中可声明该mis编译和运行时需用到的第三方库，仅支持`compileOnly`和`implementation`。
 
@@ -148,7 +150,7 @@ libraryService.getLibraryInfo()
 #### mis目录下的类会参与编译吗？
 不会。虽然`mis`目录下的类能被`java`目录下的类直接引用，但不会参与编译，真正参与编译的是该`mis`目录生成的jar包，其位于当前工程`.gradle/mis`下。在当前工程Sync&Build的时候，mis插件会对这些配置了publication的`mis`目录进行编译打包生成jar包，并且依赖该jar包。
 
-`mis`目录下的类之所以能被`java`目录下的类直接引用，是因为`mis`目录被设置为sourceSets aidl的src目录，而Android studio对sourceSets aidl的src目录有特别支持。
+`mis`目录下的类之所以能被`java`目录下的类直接引用，是因为`mis`目录被设置为sourceSets aidl的src目录，而Android Studio对sourceSets aidl的src目录有特别支持。
 
 #### 没有Maven私服，所有模块都在一个工程下，其他模块怎么引用接口？
 不设置`publication`的`version`。通过`misPublication`声明依赖，比如：
