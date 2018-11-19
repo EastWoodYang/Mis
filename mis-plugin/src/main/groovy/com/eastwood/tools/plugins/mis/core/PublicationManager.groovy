@@ -1,6 +1,7 @@
 package com.eastwood.tools.plugins.mis.core
 
 import com.eastwood.tools.plugins.mis.core.extension.Publication
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -17,36 +18,49 @@ class PublicationManager {
 
     private static PublicationManager sPublicationManager
 
+    boolean hasLoadManifest
+
     private File misDir
-    private Map<String, Publication> sPublicationMap
-    private boolean addListener
+    private Map<String, Publication> publicationMap
     private boolean hasModified
 
-    static getInstance(Project project) {
+    static getInstance() {
         if (sPublicationManager == null) {
             sPublicationManager = new PublicationManager()
-            sPublicationManager.load(project)
         }
-
-        if (!sPublicationManager.addListener) {
-            project.gradle.buildFinished {
-                sPublicationManager.addListener = false
-                if (it.failure != null) {
-                    return
-                } else if(sPublicationManager.hasModified) {
-                    sPublicationManager.hasModified = false
-                    sPublicationManager.save()
-                }
-            }
-            sPublicationManager.addListener = true
-        }
-
         return sPublicationManager
     }
 
-    private void load(Project project) {
-        sPublicationMap = new HashMap<>()
-        misDir = new File(project.rootDir, '.gradle/mis')
+    boolean hasLoadManifest() {
+        return hasLoadManifest
+    }
+
+    void loadManifest(Project rootProject) {
+        hasLoadManifest = true
+        hasModified = false
+        publicationMap = new HashMap<>()
+
+        rootProject.gradle.buildFinished {
+            hasLoadManifest = false
+            if (it.failure != null) {
+                return
+            }
+
+            if(!hasModified) {
+                publicationMap.values().each {
+                    if(!it.hit) {
+                        hasModified = true
+                    }
+                }
+            }
+
+            if(hasModified) {
+                hasModified = false
+                saveManifest()
+            }
+        }
+
+        misDir = new File(rootProject.rootDir, '.gradle/mis')
         if (!misDir.exists()) {
             return
         }
@@ -61,13 +75,15 @@ class PublicationManager {
         NodeList publicationNodeList = document.documentElement.getElementsByTagName("publication")
         for (int i = 0; i < publicationNodeList.getLength(); i++) {
             Element publicationElement = (Element) publicationNodeList.item(i)
+
             Publication publication = new Publication()
+            publication.project = publicationElement.getAttribute("project")
             publication.groupId = publicationElement.getAttribute("groupId")
             publication.artifactId = publicationElement.getAttribute("artifactId")
             publication.version = publicationElement.getAttribute("version")
             publication.invalid = Boolean.valueOf(publicationElement.getAttribute("invalid"))
-            publication.sourceSets = new HashMap<>()
 
+            publication.sourceSets = new HashMap<>()
             NodeList sourceSetNodeList = publicationElement.getElementsByTagName("sourceSet")
             for (int j = 0; j < sourceSetNodeList.getLength(); j++) {
                 Element sourceSetElement = (Element) sourceSetNodeList.item(j)
@@ -84,11 +100,12 @@ class PublicationManager {
                 }
                 publication.sourceSets.put(sourceSet.path, sourceSet)
             }
-            sPublicationMap.put(publication.groupId + ":" + publication.artifactId, publication)
+            publicationMap.put(publication.groupId + ":" + publication.artifactId, publication)
         }
+
     }
 
-    void save() {
+    private void saveManifest() {
         if (!misDir.exists()) {
             misDir.mkdirs()
         }
@@ -97,9 +114,12 @@ class PublicationManager {
         DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance()
         Document document = builderFactory.newDocumentBuilder().newDocument()
         Element manifestElement = document.createElement("manifest")
-        sPublicationMap.each {
+        publicationMap.each {
             Publication publication = it.value
+            if(!publication.hit) return
+
             Element publicationElement = document.createElement('publication')
+            publicationElement.setAttribute('project', publication.project)
             publicationElement.setAttribute('groupId', publication.groupId)
             publicationElement.setAttribute('artifactId', publication.artifactId)
             publicationElement.setAttribute('version', publication.version)
@@ -130,7 +150,7 @@ class PublicationManager {
 
     boolean hasModified(Publication publication) {
         def key = publication.groupId + ":" + publication.artifactId
-        Publication lashPublication = sPublicationMap.get(key)
+        Publication lashPublication = publicationMap.get(key)
         if (lashPublication == null) {
             return true
         }
@@ -171,7 +191,7 @@ class PublicationManager {
         return false
     }
 
-    void updatePublication(Publication publication) {
+    void addPublication(Publication publication) {
         def key = publication.groupId + ":" + publication.artifactId
         sPublicationMap.put(key, publication)
         hasModified = true
@@ -179,8 +199,19 @@ class PublicationManager {
 
     Publication getPublication(String groupId, String artifactId) {
         def key = groupId + ":" + artifactId
-        return sPublicationMap.get(key)
+        return publicationMap.get(key)
     }
 
+    void hitPublication(Publication publication) {
+        def key = publication.groupId + ":" + publication.artifactId
+        Publication oldPublication = publicationMap.get(key)
+        if(oldPublication == null) return
+
+        if(oldPublication.hit) {
+            throw new GradleException("Already exists publication " + publication.groupId + ":" + publication.artifactId + " in project '${oldPublication.project}'.")
+        } else {
+            oldPublication.hit = true
+        }
+    }
 
 }

@@ -3,19 +3,11 @@ mis {
         main {
             groupId 'com.eastwood.demo'
             artifactId 'module-main-sdk'
-//            version '1.0.0-SNAPSHOT' // specify a version and upload to maven.
-
-            dependencies {
-                implementation 'com.google.code.gson:gson:2.8.1'
-                // compileOnly 'com.google.code.gson:gson:2.8.1'
-            }
         }
-
     }
-
 }
 
 
 dependencies {
-    implementation misPublication('com.eastwood.demo:module-main-sdk')
+
 }

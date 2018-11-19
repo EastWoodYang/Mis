@@ -22,7 +22,6 @@ android {
 dependencies {
     implementation 'com.eastwood.common:auto-inject:1.0.0'
 
-
     implementation project(':mis-core')
     // or
     // implementation 'com.eastwood.common:mis:1.0.0'
@@ -30,18 +29,17 @@ dependencies {
     implementation project(':library')
     implementation project(':micro-module')
 
-
-    // implementation library-sdk which provide by library module.
     implementation misPublication('com.eastwood.demo:library-sdk')
-    implementation misPublication('com.eastwood.demo:module-main-sdk')
-    implementation misPublication('com.eastwood.demo:module-common-sdk')
+//    implementation misPublication('com.eastwood.demo:module-main-sdk')
+//    implementation misPublication('com.eastwood.demo:module-common-sdk')
 
     // after library-sdk push to maven, you need specify a version.
     // e.g.
     // implementation misPublication('com.eastwood.demo:library-sdk:1.0.0-SNAPSHOT')
+    // or
+    // implementation 'com.eastwood.demo:library-sdk:1.0.0-SNAPSHOT'
 
 }
-
 
 
 apply plugin: 'auto-inject'

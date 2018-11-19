@@ -43,14 +43,16 @@ class JarUtil {
         def random = new Random();
         def name = "mis_" + random.nextLong()
         project.configurations.create(name)
-        if(publication.dependencies.implementation != null) {
-            publication.dependencies.implementation.each {
-                project.dependencies.add(name, it)
+        if(publication.dependencies != null) {
+            if(publication.dependencies.implementation != null) {
+                publication.dependencies.implementation.each {
+                    project.dependencies.add(name, it)
+                }
             }
-        }
-        if(publication.dependencies.compileOnly != null) {
-            publication.dependencies.compileOnly.each {
-                project.dependencies.add(name, it)
+            if(publication.dependencies.compileOnly != null) {
+                publication.dependencies.compileOnly.each {
+                    project.dependencies.add(name, it)
+                }
             }
         }
 

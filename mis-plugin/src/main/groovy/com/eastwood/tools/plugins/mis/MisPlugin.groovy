@@ -6,7 +6,6 @@ import com.eastwood.tools.plugins.mis.core.extension.MisExtension
 import com.eastwood.tools.plugins.mis.core.extension.OnPublicationListener
 import com.eastwood.tools.plugins.mis.core.extension.Publication
 import org.gradle.api.GradleException
-import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.publish.maven.MavenPublication
@@ -19,7 +18,6 @@ class MisPlugin implements Plugin<Project> {
     boolean isMicroModule
     boolean initMisSrcDir
 
-    List<Publication> publicationList
     Map<String, Publication> publicationPublishMap
 
     void apply(Project project) {
@@ -28,28 +26,31 @@ class MisPlugin implements Plugin<Project> {
             throw new GradleException("The android or android-library plugin must be applied to the project.")
         }
 
-        publicationManager = PublicationManager.getInstance(project)
-
         this.project = project
-        this.publicationList = new ArrayList<>()
+
+        initPublicationManager()
+
         this.publicationPublishMap = new HashMap<>()
         this.isMicroModule = MisUtil.isMicroModule(project)
 
         OnPublicationListener onPublicationListener = new OnPublicationListener() {
             @Override
-            void onPublicationCreated(NamedDomainObjectContainer<Publication> publications) {
-                MisUtil.addMisSourceSets(project)
-                initMisSrcDir = true
-
-                publications.each {
-                    initPublication(it)
-                    publicationList << it
-                    if (it.version != null && !it.version.isEmpty()) {
-                        handleMavenJar(project, it)
-                    } else {
-                        handleLocalJar(project, it)
-                    }
+            void onPublicationCreated(Publication publication) {
+                if(!initMisSrcDir) {
+                    MisUtil.addMisSourceSets(project)
+                    initMisSrcDir = true
                 }
+
+                initPublication(publication)
+                addPublicationDependencies(publication)
+
+                if (publication.version != null && !publication.version.isEmpty()) {
+                    handleMavenJar(project, publication)
+                } else {
+                    handleLocalJar(project, publication)
+                }
+
+                publicationManager.hitPublication(publication)
             }
         }
         MisExtension misExtension = project.extensions.create('mis', MisExtension, project, onPublicationListener)
@@ -103,6 +104,15 @@ class MisPlugin implements Plugin<Project> {
         }
     }
 
+    def initPublicationManager() {
+        publicationManager = PublicationManager.getInstance()
+
+        if(publicationManager.hasLoadManifest()) {
+            return
+        }
+        publicationManager.loadManifest(project.rootProject)
+    }
+
     Object handleMisPublication(String groupId, String artifactId, String version) {
         String fileName = artifactId + ".jar"
         File target = project.rootProject.file(".gradle/mis/" + groupId + "/" + fileName)
@@ -127,7 +137,9 @@ class MisPlugin implements Plugin<Project> {
             project.gradle.buildFinished {
                 publication = publicationManager.getPublication(groupId, artifactId)
                 if (publication == null) {
-                    throw new GradleException("Could not find " + groupId + ":" + artifactId + ".")
+                    if(version == null) {
+                        throw new GradleException("Could not find " + groupId + ":" + artifactId + ".")
+                    }
                 } else if (result == []) {
                     if (!publication.invalid && publication.version == "") {
                         throw new GradleException("Please Sync Project with Gradle files again.")
@@ -150,6 +162,9 @@ class MisPlugin implements Plugin<Project> {
         if (target.exists()) {
             boolean hasModifiedSource = publicationManager.hasModified(publication)
             if (!hasModifiedSource) {
+                project.dependencies {
+                    implementation project.files(target)
+                }
                 return
             }
         }
@@ -164,7 +179,10 @@ class MisPlugin implements Plugin<Project> {
         }
 
         MisUtil.copyFile(releaseJar, target)
-        publicationManager.updatePublication(publication)
+        project.dependencies {
+            implementation project.files(target)
+        }
+        publicationManager.addPublication(publication)
     }
 
     def handleMavenJar(Project project, Publication publication) {
@@ -201,10 +219,12 @@ class MisPlugin implements Plugin<Project> {
             target = new File(targetGroup, publication.artifactId + ".jar")
             MisUtil.copyFile(releaseJar, target)
         }
-        publicationManager.updatePublication(publication)
+        publicationManager.addPublication(publication)
     }
 
     void initPublication(Publication publication) {
+        String displayName = project.getDisplayName()
+        publication.project = displayName.substring(displayName.indexOf("'") + 1, displayName.lastIndexOf("'"))
         def buildMis = new File(project.projectDir, 'build/mis')
         if (isMicroModule) {
             def result = publication.name.split(":")
@@ -254,6 +274,22 @@ class MisPlugin implements Plugin<Project> {
                 }
             }
             publication.sourceSets.put(sourceSet.path, sourceSet)
+        }
+    }
+
+    void addPublicationDependencies(Publication publication) {
+        if(publication.dependencies == null) return
+        project.dependencies {
+            if(publication.dependencies.compileOnly != null) {
+                publication.dependencies.compileOnly.each {
+                    implementation it
+                }
+            }
+            if(publication.dependencies.implementation != null) {
+                publication.dependencies.implementation.each {
+                    implementation it
+                }
+            }
         }
     }
 

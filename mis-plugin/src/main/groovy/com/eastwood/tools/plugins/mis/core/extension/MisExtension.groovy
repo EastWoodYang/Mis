@@ -19,8 +19,12 @@ class MisExtension {
     }
 
     void publications(Closure closure) {
+        int index = this.publications.size()
         this.publications.configure(closure)
-        onPublicationListener.onPublicationCreated(publications)
+        List<Publication> publicationList = this.publications.toList()
+        for (int i = index; i < publicationList.size(); i++) {
+            onPublicationListener.onPublicationCreated(publicationList.get(i))
+        }
     }
 
     void repositories(Action<? super RepositoryHandler> configure) {

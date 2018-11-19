@@ -29,8 +29,10 @@ microModule {
 }
 
 dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation misPublication('com.eastwood.demo:library-sdk')
+    implementation 'com.eastwood.common:auto-inject:1.0.0'
+
     implementation project(':mis-core')
+    // or
+    // implementation 'com.eastwood.common:mis:1.0.0'
 
 }

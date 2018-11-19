@@ -10,6 +10,8 @@ class Publication {
     String microModuleName
     File buildDir
 
+    String project
+
     Map<String, SourceSet> sourceSets
 
     String groupId
@@ -21,6 +23,7 @@ class Publication {
     Closure sourceFilter
 
     boolean invalid
+    boolean hit
 
     Publication(final String name) {
         this.name = name
