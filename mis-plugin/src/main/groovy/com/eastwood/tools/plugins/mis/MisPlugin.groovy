@@ -17,6 +17,8 @@ class MisPlugin implements Plugin<Project> {
     Project project
     boolean isMicroModule
     boolean initMisSrcDir
+    boolean executePublish
+    String publishPublication
 
     Map<String, Publication> publicationPublishMap
 
@@ -27,6 +29,13 @@ class MisPlugin implements Plugin<Project> {
         }
 
         this.project = project
+
+        project.gradle.getStartParameter().taskNames.each {
+            if(it.startsWith('publishMis')) {
+                executePublish = true
+                publishPublication = it.substring(it.indexOf('[') + 1, it.lastIndexOf(']'))
+            }
+        }
 
         initPublicationManager()
 
@@ -44,18 +53,25 @@ class MisPlugin implements Plugin<Project> {
                 initPublication(publication)
                 addPublicationDependencies(publication)
 
-                if (publication.version != null && !publication.version.isEmpty()) {
-                    handleMavenJar(project, publication)
+                if(executePublish && publishPublication == publication.artifactId) {
+                    publicationPublishMap.put(publication.artifactId, publication)
                 } else {
-                    handleLocalJar(project, publication)
+                    if (publication.version != null && !publication.version.isEmpty()) {
+                        handleMavenJar(project, publication)
+                    } else {
+                        handleLocalJar(project, publication)
+                    }
+                    publicationManager.hitPublication(publication)
                 }
-
-                publicationManager.hitPublication(publication)
             }
         }
         MisExtension misExtension = project.extensions.create('mis', MisExtension, project, onPublicationListener)
 
         project.dependencies.metaClass.misPublication { Object value ->
+            if(executePublish) {
+                return []
+            }
+
             def groupId, artifactId, version
             if (value instanceof String) {
                 String[] values = value.split(":")
@@ -107,10 +123,10 @@ class MisPlugin implements Plugin<Project> {
     def initPublicationManager() {
         publicationManager = PublicationManager.getInstance()
 
-        if(publicationManager.hasLoadManifest()) {
+        if(publicationManager.hasLoadManifest) {
             return
         }
-        publicationManager.loadManifest(project.rootProject)
+        publicationManager.loadManifest(project.rootProject, executePublish)
     }
 
     Object handleMisPublication(String groupId, String artifactId, String version) {
@@ -186,12 +202,12 @@ class MisPlugin implements Plugin<Project> {
     }
 
     def handleMavenJar(Project project, Publication publication) {
+        publicationPublishMap.put(publication.artifactId, publication)
         boolean hasModifiedSource = publicationManager.hasModified(publication)
         File targetGroup = project.rootProject.file(".gradle/mis/" + publication.groupId)
         File target = new File(targetGroup, publication.artifactId + ".jar")
         if (target.exists()) {
             if (!hasModifiedSource) {
-                publicationPublishMap.put(publication.artifactId, publication)
                 return
             }
         } else if (!hasModifiedSource) {
@@ -211,7 +227,6 @@ class MisPlugin implements Plugin<Project> {
         if (equals) {
             target.delete()
         } else {
-            publicationPublishMap.put(publication.artifactId, publication)
             targetGroup = project.rootProject.file(".gradle/mis/" + publication.groupId)
             if (!targetGroup.exists()) {
                 targetGroup.mkdirs()

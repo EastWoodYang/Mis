@@ -23,6 +23,7 @@ class PublicationManager {
     private File misDir
     private Map<String, Publication> publicationMap
     private boolean hasModified
+    private boolean executePublish
 
     static getInstance() {
         if (sPublicationManager == null) {
@@ -31,11 +32,8 @@ class PublicationManager {
         return sPublicationManager
     }
 
-    boolean hasLoadManifest() {
-        return hasLoadManifest
-    }
-
-    void loadManifest(Project rootProject) {
+    void loadManifest(Project rootProject, boolean executePublish) {
+        this.executePublish = executePublish
         hasLoadManifest = true
         hasModified = false
         publicationMap = new HashMap<>()
@@ -116,7 +114,7 @@ class PublicationManager {
         Element manifestElement = document.createElement("manifest")
         publicationMap.each {
             Publication publication = it.value
-            if(!publication.hit) return
+            if(!executePublish && !publication.hit) return
 
             Element publicationElement = document.createElement('publication')
             publicationElement.setAttribute('project', publication.project)
