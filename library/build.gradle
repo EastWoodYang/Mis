@@ -25,7 +25,7 @@ mis {
         main {
             groupId 'com.eastwood.demo'
             artifactId 'library-sdk'
-            version '1.0.0-SNAPSHOT' // 初次配置时不设置，发布至maven时设置
+            // version '1.0.0-SNAPSHOT' // 初次配置时不设置，发布至maven时设置
 
             dependencies {
 //                compileOnly 'com.google.code.gson:gson:2.8.1'
@@ -39,10 +39,10 @@ mis {
 
     repositories {
         maven {
-            url "http://***/repository/android-dev/"
+            url "http://******"
             credentials {
-                username 'admin'
-                password '123456'
+                username '******'
+                password '******'
             }
         }
     }
