@@ -193,7 +193,7 @@ class PublicationManager {
 
     void addPublication(Publication publication) {
         def key = publication.groupId + ":" + publication.artifactId
-        sPublicationMap.put(key, publication)
+        publicationMap.put(key, publication)
         hasModified = true
     }
 

@@ -1,6 +1,7 @@
 package com.eastwood.tools.plugins.mis
 
 import com.eastwood.tools.plugins.mis.core.JarUtil
+import com.eastwood.tools.plugins.mis.core.PublicationManager
 import com.eastwood.tools.plugins.mis.core.extension.Publication
 
 import org.gradle.api.DefaultTask
@@ -18,6 +19,9 @@ class CompileMisTask extends DefaultTask {
             throw new RuntimeException("nothing to push.")
         }
         JarUtil.packJavaDocSourceJar(project, publication)
+
+        PublicationManager publicationManager = PublicationManager.getInstance()
+        publicationManager.addPublication(publication)
     }
 
 }
