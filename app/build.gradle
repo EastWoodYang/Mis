@@ -30,8 +30,8 @@ dependencies {
     implementation project(':micro-module')
 
     implementation misPublication('com.eastwood.demo:library-sdk')
-//    implementation misPublication('com.eastwood.demo:module-main-sdk')
-//    implementation misPublication('com.eastwood.demo:module-common-sdk')
+    implementation misPublication('com.eastwood.demo:module-main-sdk')
+    implementation misPublication('com.eastwood.demo:module-common-sdk')
 
     // after library-sdk push to maven, you need specify a version.
     // e.g.

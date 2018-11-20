@@ -156,12 +156,10 @@ class MisPlugin implements Plugin<Project> {
                     if(version == null) {
                         throw new GradleException("Could not find " + groupId + ":" + artifactId + ".")
                     }
-                } else if (result == []) {
-                    if (!publication.invalid && publication.version == "") {
+                } else if (result == [] || publication.version != resultVersion) {
+                    if (!publication.invalid) {
                         throw new GradleException("Please Sync Project with Gradle files again.")
                     }
-                } else if (publication.version != resultVersion) {
-                    throw new GradleException("Please Sync Project with Gradle files again.")
                 }
             }
             return result
@@ -188,6 +186,7 @@ class MisPlugin implements Plugin<Project> {
         File releaseJar = JarUtil.packJavaSourceJar(project, publication)
         if (releaseJar == null) {
             publication.invalid = true
+            publicationManager.addPublication(publication)
             if (target.exists()) {
                 target.delete()
             }

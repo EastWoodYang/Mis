@@ -46,7 +46,7 @@ class PublicationManager {
 
             if(!hasModified) {
                 publicationMap.values().each {
-                    if(!it.hit) {
+                    if(!it.hit && !it.invalid) {
                         hasModified = true
                     }
                 }
@@ -114,7 +114,7 @@ class PublicationManager {
         Element manifestElement = document.createElement("manifest")
         publicationMap.each {
             Publication publication = it.value
-            if(!executePublish && !publication.hit) return
+            if((!executePublish && !publication.hit) || publication.invalid) return
 
             Element publicationElement = document.createElement('publication')
             publicationElement.setAttribute('project', publication.project)
@@ -191,8 +191,14 @@ class PublicationManager {
 
     void addPublication(Publication publication) {
         def key = publication.groupId + ":" + publication.artifactId
-        publicationMap.put(key, publication)
-        hasModified = true
+        def oldPublication = publicationMap.put(key, publication)
+        if(publication.invalid) {
+            if(oldPublication != null && !oldPublication.invalid) {
+                hasModified = true
+            }
+        } else {
+            hasModified = true
+        }
     }
 
     Publication getPublication(String groupId, String artifactId) {
