@@ -145,13 +145,13 @@ ILibraryService libraryService = MisService.getService(ILibraryService.class);
 libraryService.getLibraryInfo()
 ```
 
-## QA
-#### mis目录下的类会参与编译吗？
+## Q&A
+#### 1.mis目录下的类会参与编译吗？
 不会。虽然`mis`目录下的类能被`java`目录下的类直接引用，但不会参与编译，真正参与编译的是该`mis`目录生成的jar包，其位于当前工程`.gradle/mis`下。在当前工程Sync&Build的时候，mis插件会对这些配置了publication的`mis`目录进行编译打包生成jar包，并且依赖该jar包。
 
 `mis`目录下的类之所以能被`java`目录下的类直接引用，是因为`mis`目录被设置为sourceSets aidl的src目录，而Android Studio对sourceSets aidl的src目录有特别支持。
 
-#### 没有Maven私服，所有模块都在一个工程下，其他模块怎么引用接口？
+#### 2.没有Maven私服，所有模块都在一个工程下，其他模块怎么引用接口？
 不设置`publication`的`version`。通过`misPublication`声明依赖，比如：
 ```
 dependencies {
@@ -161,7 +161,7 @@ dependencies {
 ```
 `misPublication`运行机理是会自动在当前工程`.gradle/mis`下查找是否有对应的mis提供的jar包。如果有，就使用对应的mis提供的jar包；如果没有且指定了`version`，就使用maven上的jar包。
 
-#### 将接口发布到maven后，其他模块通过misPublication声明依赖，那jar包用的是`.gradle/mis`下的还是maven上的？
+#### 3.将接口发布到maven后，其他模块通过misPublication声明依赖，那jar包用的是`.gradle/mis`下的还是maven上的？
 接口被发布到maven后，其`.gradle/mis`下的jar包会被删除，接口所在的模块根据`publication`中设置的GAV使用maven上的jar包。如果其他模块通过misPublication声明对其依赖，比如：
 ```
 dependencies {
@@ -174,7 +174,7 @@ dependencies {
 
 当`mis`目录下类发生实质性的修改后（生成不同的jar包），在当前工程Sync&Build的时，会在`.gradle/mis`下的重新生成jar包，接口所在的模块不管`publication`中是否设置`version`，都使用`.gradle/mis`下的jar包。如果其他模块通过misPublication声明对其依赖，不管`misPublication`中是否设置的`version`，都会使用`.gradle/mis`下的jar包。
 
-#### 为什么在Gradle Tasks View中找不到`publishing`相关发布Task？
+#### 4.为什么在Gradle Tasks View中找不到`publishing`相关发布Task？
 初次发布时，请检查对应的`publication`是否已经设置的`version`，以及是否添加相关`repositories`。
 
 ## License
