@@ -68,7 +68,7 @@ mis {
         main {
             groupId 'com.eastwood.demo'
             artifactId 'library-sdk'
-			version '1.0.0-SNAPSHOT'
+            version '1.0.0-SNAPSHOT'
             ...
         }
     }
