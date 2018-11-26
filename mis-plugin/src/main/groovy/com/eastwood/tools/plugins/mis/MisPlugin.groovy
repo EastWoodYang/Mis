@@ -100,9 +100,7 @@ class MisPlugin implements Plugin<Project> {
         }
 
         project.afterEvaluate {
-            if (!initMisSrcDir) {
-                MisUtil.addMisSourceSets(project)
-            }
+            MisUtil.addMisSourceSets(project)
 
             if (publicationPublishMap.size() == 0) {
                 return
