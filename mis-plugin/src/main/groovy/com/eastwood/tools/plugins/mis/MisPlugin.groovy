@@ -205,9 +205,15 @@ class MisPlugin implements Plugin<Project> {
         File target = new File(targetGroup, publication.artifactId + ".jar")
         if (target.exists()) {
             if (!hasModifiedSource) {
+                project.dependencies {
+                    implementation project.files(target)
+                }
                 return
             }
         } else if (!hasModifiedSource) {
+            project.dependencies {
+                implementation publication.groupId + ':' + publication.artifactId + ':' + publication.version
+            }
             return
         }
 
@@ -223,6 +229,9 @@ class MisPlugin implements Plugin<Project> {
         boolean equals = JarUtil.compareMavenJar(project, publication, releaseJar.absolutePath)
         if (equals) {
             target.delete()
+            project.dependencies {
+                implementation publication.groupId + ':' + publication.artifactId + ':' + publication.version
+            }
         } else {
             targetGroup = project.rootProject.file(".gradle/mis/" + publication.groupId)
             if (!targetGroup.exists()) {
@@ -230,6 +239,9 @@ class MisPlugin implements Plugin<Project> {
             }
             target = new File(targetGroup, publication.artifactId + ".jar")
             MisUtil.copyFile(releaseJar, target)
+            project.dependencies {
+                implementation project.files(target)
+            }
         }
         publicationManager.addPublication(publication)
     }
