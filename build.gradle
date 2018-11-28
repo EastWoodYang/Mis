@@ -10,7 +10,7 @@ buildscript {
         classpath 'com.android.tools.build:gradle:3.1.3'
 
         // micro-module
-        classpath 'com.eastwood.tools.plugins:micro-module:1.1.0'
+        classpath 'com.eastwood.tools.plugins:micro-module:1.2.0'
 
         // mis
         classpath 'com.eastwood.tools.plugins:mis:1.3.3'

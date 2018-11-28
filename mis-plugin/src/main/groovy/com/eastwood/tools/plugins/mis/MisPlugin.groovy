@@ -31,7 +31,7 @@ class MisPlugin implements Plugin<Project> {
         this.project = project
 
         project.gradle.getStartParameter().taskNames.each {
-            if(it.startsWith('publishMis')) {
+            if (it.startsWith('publishMis')) {
                 executePublish = true
                 publishPublication = it.substring(it.indexOf('[') + 1, it.lastIndexOf(']'))
             }
@@ -45,15 +45,21 @@ class MisPlugin implements Plugin<Project> {
         OnPublicationListener onPublicationListener = new OnPublicationListener() {
             @Override
             void onPublicationCreated(Publication publication) {
-                if(!initMisSrcDir) {
+                if (!initMisSrcDir) {
                     MisUtil.addMisSourceSets(project)
                     initMisSrcDir = true
                 }
 
                 initPublication(publication)
+                if (publicationManager.isPublicationHit(publication)) {
+                    Publication oldPublication = publicationManager.getPublication(publication.groupId, publication.artifactId)
+                    publication.sourceSets = oldPublication.sourceSets
+                } else {
+                    setPublicationSourceSets(publication)
+                }
                 addPublicationDependencies(publication)
 
-                if(executePublish && publishPublication == publication.artifactId) {
+                if (executePublish && publishPublication == publication.artifactId) {
                     publicationPublishMap.put(publication.artifactId, publication)
                 } else {
                     if (publication.version != null && !publication.version.isEmpty()) {
@@ -68,7 +74,7 @@ class MisPlugin implements Plugin<Project> {
         MisExtension misExtension = project.extensions.create('mis', MisExtension, project, onPublicationListener)
 
         project.dependencies.metaClass.misPublication { Object value ->
-            if(executePublish) {
+            if (executePublish) {
                 return []
             }
 
@@ -121,7 +127,7 @@ class MisPlugin implements Plugin<Project> {
     def initPublicationManager() {
         publicationManager = PublicationManager.getInstance()
 
-        if(publicationManager.hasLoadManifest) {
+        if (publicationManager.hasLoadManifest) {
             return
         }
         publicationManager.loadManifest(project.rootProject, executePublish)
@@ -151,7 +157,7 @@ class MisPlugin implements Plugin<Project> {
             project.gradle.buildFinished {
                 publication = publicationManager.getPublication(groupId, artifactId)
                 if (publication == null) {
-                    if(version == null) {
+                    if (version == null) {
                         throw new GradleException("Could not find " + groupId + ":" + artifactId + ".")
                     }
                 } else if (result == [] || publication.version != resultVersion) {
@@ -268,7 +274,9 @@ class MisPlugin implements Plugin<Project> {
             publication.sourceSetName = publication.name
             publication.buildDir = new File(buildMis, publication.name)
         }
+    }
 
+    void setPublicationSourceSets(Publication publication) {
         List<String> paths = new ArrayList<>()
         BaseExtension android = project.extensions.getByName('android')
         def sourceSets = android.sourceSets.getByName(publication.sourceSetName)
@@ -302,14 +310,14 @@ class MisPlugin implements Plugin<Project> {
     }
 
     void addPublicationDependencies(Publication publication) {
-        if(publication.dependencies == null) return
+        if (publication.dependencies == null) return
         project.dependencies {
-            if(publication.dependencies.compileOnly != null) {
+            if (publication.dependencies.compileOnly != null) {
                 publication.dependencies.compileOnly.each {
                     implementation it
                 }
             }
-            if(publication.dependencies.implementation != null) {
+            if (publication.dependencies.implementation != null) {
                 publication.dependencies.implementation.each {
                     implementation it
                 }

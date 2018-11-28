@@ -79,6 +79,7 @@ class PublicationManager {
             publication.groupId = publicationElement.getAttribute("groupId")
             publication.artifactId = publicationElement.getAttribute("artifactId")
             publication.version = publicationElement.getAttribute("version")
+            publication.microModuleName = publicationElement.getAttribute("microModule")
             publication.invalid = Boolean.valueOf(publicationElement.getAttribute("invalid"))
 
             publication.sourceSets = new HashMap<>()
@@ -121,6 +122,7 @@ class PublicationManager {
             publicationElement.setAttribute('groupId', publication.groupId)
             publicationElement.setAttribute('artifactId', publication.artifactId)
             publicationElement.setAttribute('version', publication.version)
+            publicationElement.setAttribute('microModule', publication.microModuleName)
             publicationElement.setAttribute('invalid', publication.invalid ? "true" : "false")
 
             publication.sourceSets.each {
@@ -212,9 +214,30 @@ class PublicationManager {
         if(oldPublication == null) return
 
         if(oldPublication.hit) {
-            throw new GradleException("Already exists publication " + publication.groupId + ":" + publication.artifactId + " in project '${oldPublication.project}'.")
+            validPublication(publication, oldPublication)
         } else {
             oldPublication.hit = true
+        }
+    }
+
+    boolean isPublicationHit(Publication publication) {
+        def key = publication.groupId + ":" + publication.artifactId
+        Publication oldPublication = publicationMap.get(key)
+        if(oldPublication == null) return false
+
+        if(oldPublication.hit) {
+            validPublication(publication, oldPublication)
+        }
+
+        return oldPublication.hit
+    }
+
+    private void validPublication(Publication publication, Publication oldPublication) {
+        if(oldPublication == null) return
+
+        if(publication.project != oldPublication.project
+                || publication.microModuleName != oldPublication.microModuleName) {
+            throw new GradleException("Already exists publication " + publication.groupId + ":" + publication.artifactId + " in project '${oldPublication.project}'.")
         }
     }
 
