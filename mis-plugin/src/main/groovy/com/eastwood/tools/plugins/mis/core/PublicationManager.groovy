@@ -79,6 +79,7 @@ class PublicationManager {
             publication.groupId = publicationElement.getAttribute("groupId")
             publication.artifactId = publicationElement.getAttribute("artifactId")
             publication.version = publicationElement.getAttribute("version")
+            if(publication.version == "") publication.version = null
             publication.microModuleName = publicationElement.getAttribute("microModule")
             publication.invalid = Boolean.valueOf(publicationElement.getAttribute("invalid"))
 
@@ -150,11 +151,16 @@ class PublicationManager {
 
     boolean hasModified(Publication publication) {
         def key = publication.groupId + ":" + publication.artifactId
-        Publication lashPublication = publicationMap.get(key)
-        if (lashPublication == null) {
+        Publication lastPublication = publicationMap.get(key)
+        if (lastPublication == null) {
             return true
         }
-        return hasModifiedSourceSet(publication.sourceSets, lashPublication.sourceSets)
+
+        if(publication.invalid != lastPublication.invalid) {
+            return true
+        }
+
+        return hasModifiedSourceSet(publication.sourceSets, lastPublication.sourceSets)
     }
 
     private boolean hasModifiedSourceSet(Map<String, SourceSet> map1, Map<String, SourceSet> map2) {
@@ -218,18 +224,6 @@ class PublicationManager {
         } else {
             oldPublication.hit = true
         }
-    }
-
-    boolean isPublicationHit(Publication publication) {
-        def key = publication.groupId + ":" + publication.artifactId
-        Publication oldPublication = publicationMap.get(key)
-        if(oldPublication == null) return false
-
-        if(oldPublication.hit) {
-            validPublication(publication, oldPublication)
-        }
-
-        return oldPublication.hit
     }
 
     private void validPublication(Publication publication, Publication oldPublication) {

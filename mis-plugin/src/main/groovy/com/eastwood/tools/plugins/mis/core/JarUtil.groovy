@@ -2,8 +2,10 @@ package com.eastwood.tools.plugins.mis.core
 
 import com.android.build.gradle.BaseExtension
 import com.eastwood.tools.plugins.mis.core.extension.Publication
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 
+import java.util.concurrent.TimeUnit
 import java.util.jar.JarEntry
 import java.util.jar.JarFile
 import java.util.zip.ZipFile
@@ -22,35 +24,28 @@ class JarUtil {
 
         def argFiles = []
 
-        BaseExtension android = project.extensions.getByName('android')
-        def sourceSets = android.sourceSets.getByName(publication.sourceSetName)
-        sourceSets.aidl.srcDirs.each {
-            if (!it.absolutePath.endsWith("mis")) return
-
-            if (publication.microModuleName != null) {
-                if (it.absolutePath.endsWith(publication.microModuleName + "${File.separator}src${File.separator + publication.sourceSetName + File.separator}mis")) {
-                    filterJavaSource(it, it.absolutePath, sourceDir, argFiles, publication.sourceFilter)
-                }
-            } else {
-                filterJavaSource(it, it.absolutePath, sourceDir, argFiles, publication.sourceFilter)
-            }
+        publication.sourceSets.each {
+            filterJavaSource(new File(it.value.path), it.value.path, sourceDir, argFiles, publication.sourceFilter)
         }
 
         if (argFiles.size() == 0) {
             return null
         }
 
-        def random = new Random();
+        def hasDependencies = false
+        def random = new Random()
         def name = "mis_" + random.nextLong()
         project.configurations.create(name)
         if(publication.dependencies != null) {
             if(publication.dependencies.implementation != null) {
                 publication.dependencies.implementation.each {
+                    hasDependencies = true
                     project.dependencies.add(name, it)
                 }
             }
             if(publication.dependencies.compileOnly != null) {
                 publication.dependencies.compileOnly.each {
+                    hasDependencies = true
                     project.dependencies.add(name, it)
                 }
             }
@@ -64,6 +59,13 @@ class JarUtil {
                 classPath << it.absolutePath
             }
         }
+
+        project.configurations.remove(project.configurations.getByName(name))
+
+        if(classPath.isEmpty() && hasDependencies) {
+            return null
+        }
+        BaseExtension android = project.extensions.getByName('android')
         classPath << project.android.bootClasspath[0].toString()
 
         def target = android.compileOptions.targetCompatibility.versionName
@@ -94,18 +96,19 @@ class JarUtil {
     }
 
     static boolean compareMavenJar(Project project, Publication publication, String localPath) {
-        Map<String, ?> optionsCopy = MisUtil.optionsFilter(publication)
         String filePath = null
         String fileName = publication.artifactId + "-" + publication.version + ".jar"
         def random = new Random()
         def name = "mis_" + random.nextLong()
         project.configurations.create(name)
-        project.dependencies.add(name, optionsCopy)
+        project.dependencies.add(name, publication.groupId + ":" + publication.artifactId + ":" + publication.version)
         project.configurations.getByName(name).resolve().each {
             if (it.name.endsWith(fileName)) {
                 filePath = it.absolutePath
             }
         }
+        project.configurations.remove(project.configurations.getByName(name))
+
         if (filePath == null) return false
         return compareJar(localPath, filePath)
     }
@@ -116,16 +119,21 @@ class JarUtil {
         if (!System.properties['os.name'].toLowerCase().contains('windows')) {
             classpathSeparator = ":"
         }
-        def p
+        def command = null
         if (classPath.size() == 0) {
-            p = ("javac -encoding UTF-8 -target " + target + " -source " + source + " -d . " + argFiles.join(' ')).execute(null, classesDir)
+            command = "javac -encoding UTF-8 -target " + target + " -source " + source + " -d . " + argFiles.join(' ')
         } else {
-            p = ("javac -encoding UTF-8 -target " + target + " -source " + source + " -d . -classpath " + classPath.join(classpathSeparator) + " " + argFiles.join(' ')).execute(null, classesDir)
+            command = "javac -encoding UTF-8 -target " + target + " -source " + source + " -d . -classpath " + classPath.join(classpathSeparator) + " " + argFiles.join(' ')
+        }
+        def p = (command).execute(null, classesDir)
+
+        def result = p.waitFor(30, TimeUnit.SECONDS)
+        if (!result) {
+            throw new GradleException("Timed out when compile mis java source to bytecode with command.\nExecute command:\n" + command)
         }
 
-        def result = p.waitFor()
-        if (result != 0) {
-            throw new RuntimeException("Failure to convert java source to bytecode: \n" + p.err.text)
+        if(p.exitValue() != 0) {
+            throw new GradleException("Failure to compile mis java source to bytecode: \n" + p.err.text + "\nExecute command:\n" + command)
         }
 
         p = "jar cvf outputs/classes.jar -C classes . ".execute(null, classesDir.parentFile)

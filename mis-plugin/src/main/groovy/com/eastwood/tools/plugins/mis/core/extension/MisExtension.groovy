@@ -8,20 +8,16 @@ import org.gradle.api.artifacts.dsl.RepositoryHandler
 class MisExtension {
 
     Project project
+    NamedDomainObjectContainer<Publication> publications
     Action<? super RepositoryHandler> configure
-    OnPublicationListener onPublicationListener
 
-    MisExtension(Project project, OnPublicationListener listener) {
+    MisExtension(Project project) {
         this.project = project
-        this.onPublicationListener = listener
+        this.publications = project.container(Publication)
     }
 
     void publications(Closure closure) {
-        NamedDomainObjectContainer<Publication> publications = project.container(Publication)
         publications.configure(closure)
-        publications.each {
-            onPublicationListener.onPublicationCreated(it)
-        }
     }
 
     void repositories(Action<? super RepositoryHandler> configure) {

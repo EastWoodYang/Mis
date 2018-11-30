@@ -1,6 +1,6 @@
 mis {
     publications {
-        'p_common:main' {
+        p_common {
             groupId 'com.eastwood.demo'
             artifactId 'module-common-sdk'
         }

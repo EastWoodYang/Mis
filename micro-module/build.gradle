@@ -21,7 +21,6 @@ android {
 
 }
 
-// need above dependencies
 microModule {
 
     include ':p_common'
@@ -35,4 +34,18 @@ dependencies {
     // or
     // implementation 'com.eastwood.common:mis:1.0.0'
 
+}
+
+apply plugin: 'maven-publish'
+
+publishing {
+    repositories {
+        maven {
+            url "http://***"
+            credentials {
+                username '***'
+                password '***'
+            }
+        }
+    }
 }

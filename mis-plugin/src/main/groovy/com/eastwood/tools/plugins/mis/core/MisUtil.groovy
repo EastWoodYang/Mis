@@ -3,7 +3,6 @@ package com.eastwood.tools.plugins.mis.core
 import com.android.build.gradle.AppExtension
 import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.LibraryExtension
-import com.eastwood.tools.plugins.mis.core.extension.Publication
 import org.gradle.api.Project
 
 class MisUtil {
@@ -63,14 +62,6 @@ class MisUtil {
         } else {
             return false
         }
-    }
-
-    static Map<String, ?> optionsFilter(Publication publication) {
-        Map<String, ?> opts = new HashMap<>()
-        opts.put("group", publication.groupId)
-        opts.put("name", publication.artifactId)
-        opts.put("version", publication.version)
-        return opts
     }
 
     static void copyFile(File source, File target) {
