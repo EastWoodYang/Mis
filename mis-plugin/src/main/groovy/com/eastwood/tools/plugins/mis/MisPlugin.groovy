@@ -51,7 +51,7 @@ class MisPlugin implements Plugin<Project> {
                 misPlugin.misPublicationList.each {
                     Publication publication = misPlugin.publicationManager.getPublication(it.groupId, it.artifactId)
                     if (publication == null) {
-                        if (version == null) {
+                        if (it.version == null) {
                             notFoundErrorMessage += "Could not found the mis publication [groupId: " + it.groupId + ", artifactId: " + it.artifactId + "].\n"
                         }
                     } else if (it.version == null || publication.version != it.version) {
