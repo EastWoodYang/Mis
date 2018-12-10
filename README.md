@@ -14,7 +14,7 @@ MIS主要解决的问题是如何在一个模块内维护其对外暴露的接�
 buildscript {
     dependencies {
         ...
-        classpath 'com.eastwood.tools.plugins:mis:1.3.6'
+        classpath 'com.eastwood.tools.plugins:mis:1.3.7'
     }
 }
 ```
