@@ -24,6 +24,7 @@ class Publication {
 
     boolean invalid
     boolean hit
+    boolean useLocal
 
     Publication(final String name) {
         this.name = name

@@ -58,7 +58,7 @@ class MisPlugin implements Plugin<Project> {
                         if(publication.invalid) return
 
                         if(it.version == null) {
-                            if(publication.version != null) {
+                            if(publication.version != null && !publication.useLocal) {
                                 inconsistentErrorMessage += "the mis publication [" + it.groupId + ":" + it.artifactId + "] declared by the " + project.getDisplayName() + " is currently invalid.\n"
                             }
                         } else {
@@ -284,6 +284,11 @@ class MisPlugin implements Plugin<Project> {
         File targetGroup = project.rootProject.file(".gradle/mis/" + publication.groupId)
         File target = new File(targetGroup, publication.artifactId + ".jar")
         if (target.exists()) {
+            Publication lastPublication = publicationManager.getPublication(publication.groupId, publication.artifactId)
+            if(lastPublication != null) {
+                lastPublication.useLocal = true
+            }
+
             if (!hasModifiedSource) {
                 project.dependencies {
                     implementation project.files(target)
@@ -404,10 +409,10 @@ class MisPlugin implements Plugin<Project> {
     void createPublishTask(Publication publication) {
         def publicationName = 'Mis[' + publication.artifactId + "]"
         createPublishingPublication(publication, publicationName)
-        String publishMavenRepositoryTaskName = "publish" + publicationName + "PublicationToMavenRepository"
-        String publishMavenLocalTaskName = "publish" + publicationName + "PublicationToMavenLocal"
+
+        String publishTaskNamePrefix = "publish" + publicationName + "PublicationTo"
         project.tasks.whenTaskAdded {
-            if (it.name == publishMavenRepositoryTaskName || it.name == publishMavenLocalTaskName) {
+            if (it.name.startsWith(publishTaskNamePrefix)) {
                 def taskName = 'compileMis[' + publication.artifactId + ']Source'
                 def compileTask = project.getTasks().findByName(taskName)
                 if (compileTask == null) {
