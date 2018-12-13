@@ -177,12 +177,12 @@ dependencies {
 #### 4.为什么在Gradle Tasks View中找不到`publishing`相关发布Task？
 初次发布时，请检查对应的`publication`是否已经设置的`version`，以及是否添加相关`repositories`。
 
-#### 5.在mis publication `dependencies {}`声明的依赖会作用于mis Publication所在的模块吗？
-mis publication `dependencies {}`是用于声明mis Publication编译和运行时需用到的第三方库，但不会作用于mis Publication所在的模块。
+#### 5.在mis publication `dependencies {}`中声明的依赖会作用于mis publication所在的模块吗？
+mis publication `dependencies {}`是用于声明mis publication编译和运行时需用到的第三方库，但不会作用于mis publication所在的模块。
 在开发的时候，`src/java`下的类能引用到mis依赖的第三方库类，但编译时会报错，提示找不到对应的类。
-产生这种情况的原因是mis插件在Gradle `sync`时，将声明的依赖传递给mis Publication所在的模块。但clean或build是不传递。
+产生这种情况的原因是mis插件在Gradle sync时，将声明的依赖传递给mis publication所在的模块。但clean或build时不传递。
 
-#### 6.如果mis publication 依赖于其他mis Publication怎么处理？
+#### 6.如果mis publication 依赖于其他mis publication怎么处理？
 建议使用`misPublication`包裹GAV，比如：
 ```
 mis {
@@ -203,7 +203,7 @@ mis {
 
 }
 ```
-这里`misPublication`的作用是，如果所依赖的mis Publication也在当前项目，那么与其所提供jar包的方式保持一致。
+这里`misPublication`的作用是，如果所依赖的mis publication也在当前项目，那么与其所提供jar包的方式保持一致。
 
 
 ## License
