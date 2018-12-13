@@ -2,17 +2,17 @@ package com.eastwood.tools.plugins.mis.core.extension
 
 class Dependencies {
 
-    List<String> implementation
-    List<String> compileOnly
+    List<Object> implementation
+    List<Object> compileOnly
 
-    void implementation(String value) {
+    void implementation(Object value) {
         if (implementation == null) {
             implementation = new ArrayList<>()
         }
         implementation.add(value)
     }
 
-    void compileOnly(String value) {
+    void compileOnly(Object value) {
         if (compileOnly == null) {
             compileOnly = new ArrayList<>()
         }

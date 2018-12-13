@@ -12,7 +12,7 @@ import java.util.zip.ZipFile
 
 class JarUtil {
 
-    static File packJavaSourceJar(Project project, Publication publication) {
+    static File packJavaSourceJar(Project project, Publication publication, boolean vars) {
         publication.buildDir.deleteDir()
         publication.buildDir.mkdirs()
         def sourceDir = new File(publication.buildDir, "source")
@@ -36,14 +36,14 @@ class JarUtil {
         def random = new Random()
         def name = "mis_" + random.nextLong()
         project.configurations.create(name)
-        if(publication.dependencies != null) {
-            if(publication.dependencies.implementation != null) {
+        if (publication.dependencies != null) {
+            if (publication.dependencies.implementation != null) {
                 publication.dependencies.implementation.each {
                     hasDependencies = true
                     project.dependencies.add(name, it)
                 }
             }
-            if(publication.dependencies.compileOnly != null) {
+            if (publication.dependencies.compileOnly != null) {
                 publication.dependencies.compileOnly.each {
                     hasDependencies = true
                     project.dependencies.add(name, it)
@@ -62,7 +62,7 @@ class JarUtil {
 
         project.configurations.remove(project.configurations.getByName(name))
 
-        if(classPath.isEmpty() && hasDependencies) {
+        if (classPath.isEmpty() && hasDependencies) {
             return null
         }
         BaseExtension android = project.extensions.getByName('android')
@@ -70,7 +70,7 @@ class JarUtil {
 
         def target = android.compileOptions.targetCompatibility.versionName
         def source = android.compileOptions.sourceCompatibility.versionName
-        return generateJavaSourceJar(classesDir, argFiles, classPath, target, source)
+        return generateJavaSourceJar(classesDir, argFiles, classPath, target, source, vars)
     }
 
     static File packJavaDocSourceJar(Project project, Publication publication) {
@@ -114,16 +114,16 @@ class JarUtil {
     }
 
     private static File generateJavaSourceJar(File classesDir,
-                                              def argFiles, def classPath, def target, def source) {
+                                              def argFiles, def classPath, def target, def source, boolean vars) {
         def classpathSeparator = ";"
         if (!System.properties['os.name'].toLowerCase().contains('windows')) {
             classpathSeparator = ":"
         }
         def command = null
         if (classPath.size() == 0) {
-            command = "javac -encoding UTF-8 -target " + target + " -source " + source + " -d . " + argFiles.join(' ')
+            command = "javac " + (vars ? "-g:vars" : "") + " -encoding UTF-8 -target " + target + " -source " + source + " -d . " + argFiles.join(' ')
         } else {
-            command = "javac -encoding UTF-8 -target " + target + " -source " + source + " -d . -classpath " + classPath.join(classpathSeparator) + " " + argFiles.join(' ')
+            command = "javac " + (vars ? "-g:vars" : "") + " -encoding UTF-8 -target " + target + " -source " + source + " -d . -classpath " + classPath.join(classpathSeparator) + " " + argFiles.join(' ')
         }
         def p = (command).execute(null, classesDir)
 
@@ -132,7 +132,7 @@ class JarUtil {
             throw new GradleException("Timed out when compile mis java source to bytecode with command.\nExecute command:\n" + command)
         }
 
-        if(p.exitValue() != 0) {
+        if (p.exitValue() != 0) {
             throw new GradleException("Failure to compile mis java source to bytecode: \n" + p.err.text + "\nExecute command:\n" + command)
         }
 

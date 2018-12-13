@@ -14,7 +14,7 @@ class CompileMisTask extends DefaultTask {
     @TaskAction
     void compileSource() {
         def project = getProject()
-        def releaseJar = JarUtil.packJavaSourceJar(project, publication)
+        def releaseJar = JarUtil.packJavaSourceJar(project, publication, false)
         if (releaseJar == null) {
             throw new RuntimeException("nothing to push.")
         }
