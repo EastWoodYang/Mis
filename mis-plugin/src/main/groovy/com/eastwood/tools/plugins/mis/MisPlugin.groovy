@@ -133,7 +133,9 @@ class MisPlugin implements Plugin<Project> {
 
                 setPublicationSourceSets(publication)
 
-                addPublicationDependencies(publication)
+                if(project.gradle.startParameter.taskNames.isEmpty()) {
+                    addPublicationDependencies(publication)
+                }
 
                 if (executePublish && publishPublication == publication.artifactId) {
                     publicationPublishMap.put(publication.artifactId, publication)
