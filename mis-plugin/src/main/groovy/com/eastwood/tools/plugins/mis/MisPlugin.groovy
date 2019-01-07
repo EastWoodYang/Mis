@@ -117,11 +117,11 @@ class MisPlugin implements Plugin<Project> {
         MisExtension misExtension = project.extensions.create('mis', MisExtension, project)
 
         Dependencies.metaClass.misPublication { String value ->
-            handleMisPublication(value)
+            handleMisPublication(value, true)
         }
 
         project.dependencies.metaClass.misPublication { Object value ->
-            handleMisPublication(value)
+            handleMisPublication(value, false)
         }
 
         project.afterEvaluate {
@@ -174,8 +174,8 @@ class MisPlugin implements Plugin<Project> {
         publicationManager.loadManifest(project.rootProject, executePublish)
     }
 
-    Object handleMisPublication(Object value) {
-        if (executePublish) {
+    Object handleMisPublication(Object value, boolean fromPublication) {
+        if (executePublish && !fromPublication) {
             return []
         }
 

@@ -3,7 +3,9 @@ package com.eastwood.tools.plugins.mis.core
 import com.android.build.gradle.BaseExtension
 import com.eastwood.tools.plugins.mis.core.extension.Publication
 import org.gradle.api.GradleException
+import org.gradle.api.JavaVersion
 import org.gradle.api.Project
+import org.gradle.internal.jvm.Jvm
 
 import java.util.concurrent.TimeUnit
 import java.util.jar.JarEntry
@@ -120,10 +122,11 @@ class JarUtil {
             classpathSeparator = ":"
         }
         def command = null
+        boolean keepParameters = vars && Jvm.current().javaVersion.compareTo(JavaVersion.VERSION_1_8) >= 0
         if (classPath.size() == 0) {
-            command = "javac " + (vars ? "-g:vars" : "") + " -encoding UTF-8 -target " + target + " -source " + source + " -d . " + argFiles.join(' ')
+            command = "javac " + (keepParameters ? "-parameters" : "") + " -encoding UTF-8 -target " + target + " -source " + source + " -d . " + argFiles.join(' ')
         } else {
-            command = "javac " + (vars ? "-g:vars" : "") + " -encoding UTF-8 -target " + target + " -source " + source + " -d . -classpath " + classPath.join(classpathSeparator) + " " + argFiles.join(' ')
+            command = "javac " + (keepParameters ? "-parameters" : "") + " -encoding UTF-8 -target " + target + " -source " + source + " -d . -classpath " + classPath.join(classpathSeparator) + " " + argFiles.join(' ')
         }
         def p = (command).execute(null, classesDir)
 
