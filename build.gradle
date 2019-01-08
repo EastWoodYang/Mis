@@ -16,7 +16,7 @@ buildscript {
         classpath 'com.eastwood.tools.plugins:mis:1.3.8'
 
         // auto-inject
-        classpath 'com.eastwood.tools.plugins:auto-inject:1.0.2'
+        classpath 'com.eastwood.tools.plugins:auto-inject:1.0.3'
 
     }
 }
