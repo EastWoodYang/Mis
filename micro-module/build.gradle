@@ -2,12 +2,16 @@ apply plugin: 'micro-module'
 apply plugin: 'com.android.library'
 apply plugin: 'mis'
 
+apply plugin: 'kotlin-android'
+
+apply plugin: 'kotlin-android-extensions'
+
 android {
-    compileSdkVersion 25
+    compileSdkVersion 27
 
     defaultConfig {
         minSdkVersion 14
-        targetSdkVersion 25
+        targetSdkVersion 27
         versionCode 1
         versionName "1.0"
     }
@@ -19,9 +23,15 @@ android {
         }
     }
 
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
 }
 
 microModule {
+    include ':p_kotlin'
 
     include ':p_common'
 
@@ -29,6 +39,8 @@ microModule {
 
 dependencies {
     implementation 'com.eastwood.common:auto-inject:1.0.0'
+
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 
     implementation project(':mis-core')
     // or

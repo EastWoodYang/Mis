@@ -30,5 +30,3 @@ captures/
 # Intellij
 *.iml
 .idea
-
-micro-module/
