@@ -1,4 +1,4 @@
 includeBuild './mis-plugin'
 include ':mis-core'
 
-include ':app', ':library', ':micro-module'
+include ':app', ':library', ':micro-module', ':kotlin'

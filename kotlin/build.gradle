@@ -1,0 +1,81 @@
+apply plugin: 'com.android.library'
+apply plugin: 'mis'
+
+apply plugin: 'kotlin-android'
+
+apply plugin: 'kotlin-android-extensions'
+
+android {
+    compileSdkVersion 27
+
+    defaultConfig {
+        minSdkVersion 14
+        targetSdkVersion 27
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+mis {
+    publications {
+        main {
+            groupId 'com.eastwood.demo'
+            artifactId 'kotlin-sdk'
+            // version '1.0.0-SNAPSHOT' // 初次配置时不设置，发布至maven时设置
+
+            dependencies {
+                // 只支持 compileOnly 和 implementation
+
+//                compileOnly 'com.google.code.gson:gson:2.8.1'
+                // or
+//                implementation 'com.google.code.gson:gson:2.8.1'
+
+//                compileOnly misPublication('com.eastwood.demo:module-main-sdk')
+            }
+        }
+    }
+
+    repositories {
+//        maven {
+//            url "http://******"
+//            credentials {
+//                username '******'
+//                password '******'
+//            }
+//        }
+
+        maven {
+            url "http://10.10.9.201:8081/repository/android-dev/"
+            credentials {
+                username 'admin'
+                password 'admin123'
+            }
+        }
+    }
+
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    implementation 'com.android.support:appcompat-v7:27.1.1'
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'com.android.support.test:runner:1.0.2'
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+}
