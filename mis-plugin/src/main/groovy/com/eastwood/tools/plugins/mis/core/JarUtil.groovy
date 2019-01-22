@@ -6,6 +6,8 @@ import org.gradle.api.GradleException
 import org.gradle.api.JavaVersion
 import org.gradle.api.Project
 import org.gradle.internal.jvm.Jvm
+import org.jetbrains.kotlin.cli.common.ExitCode
+import org.jetbrains.kotlin.cli.jvm.K2JVMCompiler
 
 import java.util.concurrent.TimeUnit
 import java.util.jar.JarEntry
@@ -116,31 +118,82 @@ class JarUtil {
     }
 
     private static File generateJavaSourceJar(File classesDir,
-                                              def argFiles, def classPath, def target, def source, boolean vars) {
-        def classpathSeparator = ";"
-        if (!System.properties['os.name'].toLowerCase().contains('windows')) {
-            classpathSeparator = ":"
-        }
-        def command = null
+                                              List<String> argFiles,
+                                              List<String> classPath,
+                                              def target, def source, boolean vars) {
+
+
         boolean keepParameters = vars && Jvm.current().javaVersion.compareTo(JavaVersion.VERSION_1_8) >= 0
-        if (classPath.size() == 0) {
-            command = "javac " + (keepParameters ? "-parameters" : "") + " -encoding UTF-8 -target " + target + " -source " + source + " -d . " + argFiles.join(' ')
-        } else {
-            command = "javac " + (keepParameters ? "-parameters" : "") + " -encoding UTF-8 -target " + target + " -source " + source + " -d . -classpath " + classPath.join(classpathSeparator) + " " + argFiles.join(' ')
-        }
-        def p = (command).execute(null, classesDir)
-
-        def result = p.waitFor(30, TimeUnit.SECONDS)
-        if (!result) {
-            throw new GradleException("Timed out when compile mis java source to bytecode with command.\nExecute command:\n" + command)
+        List<String> javaFiles = new ArrayList<>()
+        List<String> kotlinFiles = new ArrayList<>()
+        argFiles.each {
+            if (it.endsWith('.java')) {
+                javaFiles.add(it)
+            } else if (it.endsWith('.kt')) {
+                kotlinFiles.add(it)
+            }
         }
 
-        if (p.exitValue() != 0) {
-            throw new GradleException("Failure to compile mis java source to bytecode: \n" + p.err.text + "\nExecute command:\n" + command)
+        if (!kotlinFiles.isEmpty()) {
+            K2JVMCompiler compiler = new K2JVMCompiler()
+            def args = new ArrayList<String>()
+            args.addAll(argFiles)
+            args.add('-d')
+            args.add(classesDir.absolutePath)
+            args.add('-no-stdlib')
+            if (keepParameters) {
+                args.add('-java-parameters')
+            }
+
+            JavaVersion javaVersion = JavaVersion.toVersion(target)
+            if(javaVersion != JavaVersion.VERSION_1_8 && javaVersion != JavaVersion.VERSION_1_6) {
+                throw new GradleException("Failure to compile mis kotlin source to bytecode: unknown JVM target version: $target, supported versions: 1.6, 1.8\nTry:\n " +
+                        "   android {\n" +
+                        "       ...\n" +
+                        "       compileOptions {\n" +
+                        "           sourceCompatibility JavaVersion.VERSION_1_8\n" +
+                        "           targetCompatibility JavaVersion.VERSION_1_8\n" +
+                        "       }\n" +
+                        "   }")
+            }
+
+
+            args.add('-jvm-target')
+            args.add(target)
+
+            if (classPath.size() > 0) {
+                args.add('-classpath')
+                args.addAll(classPath)
+            }
+
+            ExitCode exitCode = compiler.exec(System.out, (String[]) args.toArray())
+            if (exitCode != ExitCode.OK) {
+                throw new GradleException("Failure to compile mis kotlin source to bytecode.")
+            }
+
+            classPath.add(classesDir.absolutePath)
         }
 
-        p = "jar cvf outputs/classes.jar -C classes . ".execute(null, classesDir.parentFile)
-        result = p.waitFor()
+        if (!javaFiles.isEmpty()) {
+            def classpathSeparator = ";"
+            if (!System.properties['os.name'].toLowerCase().contains('windows')) {
+                classpathSeparator = ":"
+            }
+            def command = "javac " + (keepParameters ? "-parameters" : "") + " -d . -encoding UTF-8 -target " + target + " -source " + source + (classPath.size() > 0 ? (" -classpath " + classPath.join(classpathSeparator) + " ") : "") + javaFiles.join(' ')
+            def p = (command).execute(null, classesDir)
+
+            def result = p.waitFor(30, TimeUnit.SECONDS)
+            if (!result) {
+                throw new GradleException("Timed out when compile mis java source to bytecode with command.\nExecute command:\n" + command)
+            }
+
+            if (p.exitValue() != 0) {
+                throw new GradleException("Failure to compile mis java source to bytecode: \n" + p.err.text + "\nExecute command:\n" + command)
+            }
+        }
+
+        def p = "jar cvf outputs/classes.jar -C classes . ".execute(null, classesDir.parentFile)
+        def result = p.waitFor()
         p.destroy()
         p = null
         if (result != 0) {
@@ -167,7 +220,7 @@ class JarUtil {
                 filterJavaSource(childFile, prefix, sourceDir, argFiles, sourceFilter)
             }
         } else {
-            if (file.name.endsWith(".java")) {
+            if (file.name.endsWith(".java") || file.name.endsWith('.kt')) {
                 def packageName = file.parent.replace(prefix, "")
                 def targetParent = new File(sourceDir, packageName)
                 if (!targetParent.exists()) targetParent.mkdirs()
@@ -188,7 +241,7 @@ class JarUtil {
                 filterJavaDocSource(childFile, prefix, javaDocDir)
             }
         } else {
-            if (file.name.endsWith(".java")) {
+            if (file.name.endsWith(".java") || file.name.endsWith('.kt')) {
                 def packageName = file.parent.replace(prefix, "")
                 def targetParent = new File(javaDocDir, packageName)
                 if (!targetParent.exists()) targetParent.mkdirs()

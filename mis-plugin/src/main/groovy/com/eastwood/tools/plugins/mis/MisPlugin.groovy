@@ -407,7 +407,7 @@ class MisPlugin implements Plugin<Project> {
             sourceSet.path = it
             sourceSet.lastModifiedSourceFile = new HashMap<>()
             project.fileTree(it).each {
-                if (it.name.endsWith('.java')) {
+                if (it.name.endsWith('.java') || it.name.endsWith('.kt')) {
                     SourceFile sourceFile = new SourceFile()
                     sourceFile.path = it.path
                     sourceFile.lastModified = it.lastModified()
