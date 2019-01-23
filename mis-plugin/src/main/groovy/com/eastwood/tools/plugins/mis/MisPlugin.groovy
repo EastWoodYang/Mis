@@ -435,26 +435,26 @@ class MisPlugin implements Plugin<Project> {
     }
 
     void createPublishTask(Publication publication) {
-        def publicationName = 'Mis[' + publication.artifactId + "]"
-        createPublishingPublication(publication, publicationName)
+        def taskName = 'compileMis[' + publication.artifactId + ']Source'
+        def compileTask = project.getTasks().findByName(taskName)
+        if (compileTask == null) {
+            compileTask = project.getTasks().create(taskName, CompileMisTask.class)
+            compileTask.publication = publication
+            compileTask.dependsOn 'clean'
+        }
 
+        def publicationName = 'Mis[' + publication.artifactId + "]"
         String publishTaskNamePrefix = "publish" + publicationName + "PublicationTo"
         project.tasks.whenTaskAdded {
             if (it.name.startsWith(publishTaskNamePrefix)) {
-                def taskName = 'compileMis[' + publication.artifactId + ']Source'
-                def compileTask = project.getTasks().findByName(taskName)
-                if (compileTask == null) {
-                    compileTask = project.getTasks().create(taskName, CompileMisTask.class)
-                    compileTask.publication = publication
-                    compileTask.dependsOn 'clean'
-                    it.dependsOn compileTask
-                    it.doLast {
-                        File groupDir = project.rootProject.file(".gradle/mis/" + publication.groupId)
-                        new File(groupDir, publication.artifactId + ".jar").delete()
-                    }
+                it.dependsOn compileTask
+                it.doLast {
+                    File groupDir = project.rootProject.file(".gradle/mis/" + publication.groupId)
+                    new File(groupDir, publication.artifactId + ".jar").delete()
                 }
             }
         }
+        createPublishingPublication(publication, publicationName)
     }
 
     void createPublishingPublication(Publication publication, String publicationName) {
