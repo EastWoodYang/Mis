@@ -51,19 +51,11 @@ mis {
     }
 
     repositories {
-//        maven {
-//            url "http://******"
-//            credentials {
-//                username '******'
-//                password '******'
-//            }
-//        }
-
         maven {
-            url "http://10.10.9.201:8081/repository/android-dev/"
+            url "http://******"
             credentials {
-                username 'admin'
-                password 'admin123'
+                username '******'
+                password '******'
             }
         }
     }

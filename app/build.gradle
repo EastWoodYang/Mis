@@ -26,11 +26,13 @@ dependencies {
     // or
     // implementation 'com.eastwood.common:mis:1.0.0'
 
+    implementation project(':library')
+
     implementation misPublication('com.eastwood.demo:library-sdk')
-    implementation misPublication('com.eastwood.demo:kotlin-sdk')
-    implementation misPublication('com.eastwood.demo:module-main-sdk')
-    implementation misPublication('com.eastwood.demo:module-common-sdk')
-    implementation misPublication('com.eastwood.demo:module-kotlin-sdk')
+//    implementation misPublication('com.eastwood.demo:kotlin-sdk')
+//    implementation misPublication('com.eastwood.demo:module-main-sdk')
+//    implementation misPublication('com.eastwood.demo:module-common-sdk')
+//    implementation misPublication('com.eastwood.demo:module-kotlin-sdk')
 
     // after library-sdk push to maven, you need specify a version.
     // e.g.

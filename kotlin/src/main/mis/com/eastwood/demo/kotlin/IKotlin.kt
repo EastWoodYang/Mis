@@ -7,8 +7,6 @@ package com.eastwood.demo.kotlin
  */
 interface IKotlin {
 
-    var javaObject:JavaObject
-
     fun test()
 
 }
