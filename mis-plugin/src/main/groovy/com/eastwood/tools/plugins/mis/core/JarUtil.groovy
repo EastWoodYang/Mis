@@ -171,6 +171,8 @@ class JarUtil {
                 throw new GradleException("Failure to compile mis kotlin source to bytecode.")
             }
 
+            new File(classesDir, '/META-INF').deleteDir()
+
             classPath.add(classesDir.absolutePath)
         }
 
