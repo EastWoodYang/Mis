@@ -10,79 +10,16 @@ import org.gradle.BuildResult
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.artifacts.DependencySubstitution
+import org.gradle.api.artifacts.component.ModuleComponentSelector
 import org.gradle.api.initialization.Settings
 import org.gradle.api.invocation.Gradle
 import org.gradle.api.publish.maven.MavenPublication
 
 class MisPlugin implements Plugin<Project> {
 
-    private final static BuildListener buildListener = new BuildListener() {
-
-        @Override
-        void buildStarted(Gradle gradle) {
-
-        }
-
-        @Override
-        void settingsEvaluated(Settings settings) {
-
-        }
-
-        @Override
-        void projectsLoaded(Gradle gradle) {
-
-        }
-
-        @Override
-        void projectsEvaluated(Gradle gradle) {
-
-        }
-
-        @Override
-        void buildFinished(BuildResult buildResult) {
-
-            def notFoundErrorMessage = ""
-            def inconsistentErrorMessage = ""
-
-            buildResult.gradle.rootProject.allprojects.each {
-                Project project = it
-                MisPlugin misPlugin = project.plugins.findPlugin('mis')
-                if (misPlugin == null) return
-
-                misPlugin.misPublicationList.each {
-                    Publication providerPublication = misPlugin.publicationManager.getPublication(it.groupId, it.artifactId)
-                    if (providerPublication == null) {
-                        if (it.version == null) {
-                            notFoundErrorMessage += "Could not found the mis publication [groupId: " + it.groupId + ", artifactId: " + it.artifactId + "].\n"
-                        }
-                    } else if (providerPublication.invalid) {
-                        if (it.version != null) {
-                            inconsistentErrorMessage += "The mis publication [" + it.groupId + ":" + it.artifactId + ":" + it.version + "] declared by the " + project.getDisplayName() + " is currently invalid.\n"
-                        }
-                    } else if (providerPublication.useLocal) {
-                        if (!it.useLocal) {
-                            inconsistentErrorMessage += "The mis publication [" + it.groupId + ":" + it.artifactId + (it.version == null ? "" : (":" + it.version)) + "] declared by the " + project.getDisplayName() + " is currently invalid.\n"
-                        }
-                    } else if (providerPublication.version != it.version) {
-                        inconsistentErrorMessage += "The mis publication [" + it.groupId + ":" + it.artifactId + (it.version == null ? "" : (":" + it.version)) + "] declared by the " + project.getDisplayName() + " is currently invalid.\n"
-                    }
-                }
-            }
-
-            if (!notFoundErrorMessage.isEmpty()) {
-                throw new GradleException(notFoundErrorMessage)
-            } else if (!inconsistentErrorMessage.isEmpty()) {
-                if (buildResult.gradle.startParameter.taskNames.isEmpty()) {
-                    inconsistentErrorMessage += "\n* Tip:\nSync Project with Gradle files again."
-                } else {
-                    inconsistentErrorMessage += "\n* Tip:\nExecute tasks: " + buildResult.gradle.startParameter.taskNames + " again."
-                }
-                throw new GradleException(inconsistentErrorMessage)
-            }
-        }
-    }
-
     Project project
+    File misDir
     boolean isMicroModule
     boolean executePublish
     String publishPublication
@@ -97,10 +34,80 @@ class MisPlugin implements Plugin<Project> {
         if (!MisUtil.hasAndroidPlugin(project)) {
             throw new GradleException("The android or android-library plugin must be applied to the project.")
         }
-        project.gradle.removeListener(buildListener)
-        project.gradle.addListener(buildListener)
 
         this.project = project
+        misDir = new File(project.rootProject.projectDir, '.gradle/mis')
+        if (!misDir.exists()) {
+            misDir.mkdirs()
+        }
+
+        project.gradle.addBuildListener(new BuildListener() {
+            @Override
+            void buildStarted(Gradle gradle) {
+
+            }
+
+            @Override
+            void settingsEvaluated(Settings settings) {
+
+            }
+
+            @Override
+            void projectsLoaded(Gradle gradle) {
+            }
+
+            @Override
+            void projectsEvaluated(Gradle gradle) {
+                project.configurations.all {
+                    publicationManager.getPublicationMap().values().each {
+                        if(it.invalid) {
+                            exclude module: "mis-${it.groupId}-${it.artifactId}"
+                        }
+                    }
+                }
+            }
+
+            @Override
+            void buildFinished(BuildResult buildResult) {
+            }
+        })
+
+        project.configurations.all {
+            resolutionStrategy.dependencySubstitution.all { DependencySubstitution dependency ->
+                if (dependency.requested instanceof ModuleComponentSelector) {
+                    ModuleComponentSelector requested = (ModuleComponentSelector) dependency.requested
+                    if (requested.module.startsWith('mis-')) {
+                        String key = requested.module.substring(4)
+                        Publication publication = publicationManager.getPublicationByKey(key)
+                        if (publication != null) {
+                            if (publication.invalid) {
+                                exclude module: requested.module
+                                return
+                            }
+                            if (!publication.useLocal) {
+                                dependency.useTarget "${publication.groupId}:${publication.artifactId}:${publication.version}"
+                                return
+                            }
+                        }
+                    } else {
+                        Publication publication = publicationManager.getPublication(requested.group, requested.module)
+                        if (publication != null) {
+                            if (publication.useLocal) {
+                                def selector = FlatDirModuleComponentSelector.newSelector("mis-${requested.group}-${requested.module}")
+                                dependency.useTarget selector
+                                return
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        project.repositories {
+            flatDir {
+                dirs misDir.absolutePath
+            }
+        }
 
         project.gradle.getStartParameter().taskNames.each {
             if (it.startsWith('publishMis')) {
@@ -133,7 +140,7 @@ class MisPlugin implements Plugin<Project> {
 
                 setPublicationSourceSets(publication)
 
-                if(project.gradle.startParameter.taskNames.isEmpty()) {
+                if (project.gradle.startParameter.taskNames.isEmpty()) {
                     addPublicationDependencies(publication)
                 }
 
@@ -212,16 +219,15 @@ class MisPlugin implements Plugin<Project> {
         publication.artifactId = artifactId
 
         def result
-        String fileName = artifactId + ".jar"
-        File target = project.rootProject.file(".gradle/mis/" + groupId + "/" + fileName)
+        File target = new File(misDir, "mis-${groupId}-${artifactId}.jar")
         if (target.exists()) {
             publication.useLocal = true
-            result = project.files(target)
+            result = ":mis-${groupId}-${artifactId}:"
         } else {
             Publication existPublication = publicationManager.getPublication(groupId, artifactId)
             if (existPublication == null) {
                 if (version == null) {
-                    result = []
+                    result = ":mis-${groupId}-${artifactId}:"
                 } else {
                     publication.version = version
                     result = "${groupId}:${artifactId}:${version}"
@@ -231,7 +237,7 @@ class MisPlugin implements Plugin<Project> {
                     result = []
                 } else if (existPublication.version == null) {
                     if (version == null) {
-                        result = []
+                        result = ":mis-${groupId}-${artifactId}:"
                     } else {
                         publication.version = version
                         result = "${groupId}:${artifactId}:${version}"
@@ -242,17 +248,13 @@ class MisPlugin implements Plugin<Project> {
                 }
             }
         }
+
         misPublicationList.add(publication)
         return result
     }
 
     def handleLocalJar(Project project, Publication publication) {
-        File targetGroup = project.rootProject.file(".gradle/mis/" + publication.groupId)
-        if (!targetGroup.exists()) {
-            targetGroup.mkdirs()
-        }
-
-        File target = new File(targetGroup, publication.artifactId + ".jar")
+        File target = new File(misDir, "mis-${publication.groupId}-${publication.artifactId}.jar")
         if (target.exists()) {
             boolean hasModifiedSource = publicationManager.hasModified(publication)
             if (!hasModifiedSource) {
@@ -286,7 +288,7 @@ class MisPlugin implements Plugin<Project> {
 
         MisUtil.copyFile(releaseJar, target)
         project.dependencies {
-            implementation project.files(target)
+            implementation ":mis-${publication.groupId}-${publication.artifactId}:"
         }
         publication.invalid = false
         publication.useLocal = true
@@ -296,8 +298,7 @@ class MisPlugin implements Plugin<Project> {
     def handleMavenJar(Project project, Publication publication) {
         publicationPublishMap.put(publication.artifactId, publication)
         boolean hasModifiedSource = publicationManager.hasModified(publication)
-        File targetGroup = project.rootProject.file(".gradle/mis/" + publication.groupId)
-        File target = new File(targetGroup, publication.artifactId + ".jar")
+        File target = new File(misDir, "mis-${publication.groupId}-${publication.artifactId}.jar")
         if (target.exists()) {
             if (!hasModifiedSource) {
                 Publication lastPublication = publicationManager.getPublication(publication.groupId, publication.artifactId)
@@ -305,7 +306,7 @@ class MisPlugin implements Plugin<Project> {
                 lastPublication.useLocal = true
 
                 project.dependencies {
-                    implementation project.files(target)
+                    implementation ":mis-${publication.groupId}-${publication.artifactId}:"
                 }
                 return
             }
@@ -347,14 +348,9 @@ class MisPlugin implements Plugin<Project> {
             }
         } else {
             releaseJar = JarUtil.packJavaSourceJar(project, publication, true)
-            targetGroup = project.rootProject.file(".gradle/mis/" + publication.groupId)
-            if (!targetGroup.exists()) {
-                targetGroup.mkdirs()
-            }
-            target = new File(targetGroup, publication.artifactId + ".jar")
             MisUtil.copyFile(releaseJar, target)
             project.dependencies {
-                implementation project.files(target)
+                implementation ":mis-${publication.groupId}-${publication.artifactId}:"
             }
         }
         publication.invalid = false

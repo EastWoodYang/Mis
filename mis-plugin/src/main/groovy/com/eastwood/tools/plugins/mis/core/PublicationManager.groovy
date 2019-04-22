@@ -100,7 +100,7 @@ class PublicationManager {
                 }
                 publication.sourceSets.put(sourceSet.path, sourceSet)
             }
-            publicationMap.put(publication.groupId + ":" + publication.artifactId, publication)
+            publicationMap.put(publication.groupId + "-" + publication.artifactId, publication)
         }
 
     }
@@ -150,7 +150,7 @@ class PublicationManager {
     }
 
     boolean hasModified(Publication publication) {
-        def key = publication.groupId + ":" + publication.artifactId
+        def key = publication.groupId + "" + publication.artifactId
         Publication lastPublication = publicationMap.get(key)
         if (lastPublication == null) {
             return true
@@ -198,7 +198,7 @@ class PublicationManager {
     }
 
     void addPublication(Publication publication) {
-        def key = publication.groupId + ":" + publication.artifactId
+        def key = publication.groupId + "-" + publication.artifactId
         def oldPublication = publicationMap.put(key, publication)
         if(publication.invalid) {
             if(oldPublication != null && !oldPublication.invalid) {
@@ -210,12 +210,20 @@ class PublicationManager {
     }
 
     Publication getPublication(String groupId, String artifactId) {
-        def key = groupId + ":" + artifactId
+        def key = groupId + "-" + artifactId
         return publicationMap.get(key)
     }
 
+    Publication getPublicationByKey(String key) {
+        return publicationMap.get(key)
+    }
+
+    Map<String, Publication> getPublicationMap() {
+        return publicationMap
+    }
+
     void hitPublication(Publication publication) {
-        def key = publication.groupId + ":" + publication.artifactId
+        def key = publication.groupId + "-" + publication.artifactId
         Publication oldPublication = publicationMap.get(key)
         if(oldPublication == null) return
 
