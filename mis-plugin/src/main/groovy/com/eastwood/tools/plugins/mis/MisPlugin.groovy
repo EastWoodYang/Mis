@@ -51,6 +51,7 @@ class MisPlugin implements Plugin<Project> {
 
         project.gradle.getStartParameter().taskNames.each {
             if (!isClean && it == 'clean') {
+                misDir.deleteDir()
                 isClean = true
             } else if (it.startsWith('publishMis')) {
                 executePublish = true
@@ -94,6 +95,7 @@ class MisPlugin implements Plugin<Project> {
                     publicationManager.getPublicationMap().values().each {
                         if (it.invalid) {
                             exclude module: "mis-${it.groupId}-${it.artifactId}"
+                            exclude group: it.groupId, module: it.artifactId
                         }
                     }
 
@@ -352,6 +354,7 @@ class MisPlugin implements Plugin<Project> {
         } else {
             releaseJar = JarUtil.packJavaSourceJar(project, publication, true)
             MisUtil.copyFile(releaseJar, target)
+            publication.useLocal = true
             project.dependencies {
                 implementation ":mis-${publication.groupId}-${publication.artifactId}:"
             }
