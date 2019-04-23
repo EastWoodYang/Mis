@@ -18,6 +18,8 @@ import org.gradle.api.publish.maven.MavenPublication
 
 class MisPlugin implements Plugin<Project> {
 
+    static boolean isClean
+
     Project project
     File misDir
     boolean isMicroModule
@@ -25,9 +27,9 @@ class MisPlugin implements Plugin<Project> {
     String publishPublication
 
     PublicationManager publicationManager
+    Map<String, Publication> misPublicationMap
     Map<String, Publication> publicationPublishMap
 
-    List<Publication> misPublicationList
 
     void apply(Project project) {
 
@@ -39,6 +41,36 @@ class MisPlugin implements Plugin<Project> {
         misDir = new File(project.rootProject.projectDir, '.gradle/mis')
         if (!misDir.exists()) {
             misDir.mkdirs()
+        }
+
+        project.repositories {
+            flatDir {
+                dirs misDir.absolutePath
+            }
+        }
+
+        project.gradle.getStartParameter().taskNames.each {
+            if (!isClean && it == 'clean') {
+                isClean = true
+            } else if (it.startsWith('publishMis')) {
+                executePublish = true
+                publishPublication = it.substring(it.indexOf('[') + 1, it.lastIndexOf(']'))
+            }
+        }
+
+        initPublicationManager()
+
+        this.misPublicationMap = new HashMap<>()
+        this.publicationPublishMap = new HashMap<>()
+        this.isMicroModule = MisUtil.isMicroModule(project)
+        MisExtension misExtension = project.extensions.create('mis', MisExtension, project)
+
+        Dependencies.metaClass.misPublication { String value ->
+            handleMisPublication(value, true)
+        }
+
+        project.dependencies.metaClass.misPublication { Object value ->
+            handleMisPublication(value, false)
         }
 
         project.gradle.addBuildListener(new BuildListener() {
@@ -60,76 +92,46 @@ class MisPlugin implements Plugin<Project> {
             void projectsEvaluated(Gradle gradle) {
                 project.configurations.all {
                     publicationManager.getPublicationMap().values().each {
-                        if(it.invalid) {
+                        if (it.invalid) {
                             exclude module: "mis-${it.groupId}-${it.artifactId}"
                         }
                     }
+
+                    resolutionStrategy.dependencySubstitution.all { DependencySubstitution dependency ->
+                        if (dependency.requested instanceof ModuleComponentSelector) {
+                            ModuleComponentSelector requested = (ModuleComponentSelector) dependency.requested
+                            if (requested.module.startsWith('mis-')) {
+                                String key = requested.module.substring(4)
+                                Publication publication = publicationManager.getPublicationByKey(key)
+                                if (publication != null) {
+                                    if (!publication.useLocal) {
+                                        def version = publication.version
+                                        if(version == null) {
+                                            version = misPublicationMap.get(requested.module).version
+                                        }
+                                        dependency.useTarget "${publication.groupId}:${publication.artifactId}:${version}"
+                                    }
+                                }
+                            } else {
+                                Publication publication = publicationManager.getPublication(requested.group, requested.module)
+                                if (publication != null) {
+                                    if (publication.useLocal) {
+                                        FlatDirModuleComponentSelector selector = FlatDirModuleComponentSelector.newSelector("mis-${requested.group}-${requested.module}")
+                                        dependency.useTarget selector
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
+
             }
 
             @Override
             void buildFinished(BuildResult buildResult) {
+                isClean = false
             }
         })
-
-        project.configurations.all {
-            resolutionStrategy.dependencySubstitution.all { DependencySubstitution dependency ->
-                if (dependency.requested instanceof ModuleComponentSelector) {
-                    ModuleComponentSelector requested = (ModuleComponentSelector) dependency.requested
-                    if (requested.module.startsWith('mis-')) {
-                        String key = requested.module.substring(4)
-                        Publication publication = publicationManager.getPublicationByKey(key)
-                        if (publication != null) {
-                            if (publication.invalid) {
-                                exclude module: requested.module
-                                return
-                            }
-                            if (!publication.useLocal) {
-                                dependency.useTarget "${publication.groupId}:${publication.artifactId}:${publication.version}"
-                                return
-                            }
-                        }
-                    } else {
-                        Publication publication = publicationManager.getPublication(requested.group, requested.module)
-                        if (publication != null) {
-                            if (publication.useLocal) {
-                                def selector = FlatDirModuleComponentSelector.newSelector("mis-${requested.group}-${requested.module}")
-                                dependency.useTarget selector
-                                return
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        project.repositories {
-            flatDir {
-                dirs misDir.absolutePath
-            }
-        }
-
-        project.gradle.getStartParameter().taskNames.each {
-            if (it.startsWith('publishMis')) {
-                executePublish = true
-                publishPublication = it.substring(it.indexOf('[') + 1, it.lastIndexOf(']'))
-            }
-        }
-
-        initPublicationManager()
-
-        this.misPublicationList = new ArrayList<>()
-        this.publicationPublishMap = new HashMap<>()
-        this.isMicroModule = MisUtil.isMicroModule(project)
-        MisExtension misExtension = project.extensions.create('mis', MisExtension, project)
-
-        Dependencies.metaClass.misPublication { String value ->
-            handleMisPublication(value, true)
-        }
-
-        project.dependencies.metaClass.misPublication { Object value ->
-            handleMisPublication(value, false)
-        }
 
         project.afterEvaluate {
             MisUtil.addMisSourceSets(project)
@@ -222,6 +224,7 @@ class MisPlugin implements Plugin<Project> {
         File target = new File(misDir, "mis-${groupId}-${artifactId}.jar")
         if (target.exists()) {
             publication.useLocal = true
+            publication.version = version
             result = ":mis-${groupId}-${artifactId}:"
         } else {
             Publication existPublication = publicationManager.getPublication(groupId, artifactId)
@@ -249,7 +252,7 @@ class MisPlugin implements Plugin<Project> {
             }
         }
 
-        misPublicationList.add(publication)
+        misPublicationMap.put("mis-" + publication.groupId + "-" + publication.artifactId, publication)
         return result
     }
 
