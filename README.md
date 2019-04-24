@@ -22,6 +22,7 @@ buildscript {
 在模块的build.gradle中添加**mis插件**：
 ```
 ...
+// 需位于android和kotlin相关插件之后
 apply plugin: 'mis'
 ```
 
@@ -59,7 +60,7 @@ mis {
 
 * `groupId`、`artifactId`、`version`对应的是Maven的[GAV](https://maven.apache.org/guides/mini/guide-naming-conventions.html)。**初次配置时不设置`version`，发布至maven时设置`version`。**
 
-* 在`dependencies`中可声明该mis Publication编译和运行时需用到的第三方库，仅支持`compileOnly`和`implementation`。
+* 在`dependencies`中可声明该mis Publication编译和运行时需用到的第三方库，仅支持`compileOnly`和`implementation`。如果mis文件夹下的类使用了kotlin语法，需要添加kotlin相关的依赖，比如'org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version'。
 
 ####  发布至Maven
 ```
