@@ -163,7 +163,7 @@ class JarUtil {
 
             if (classPath.size() > 0) {
                 args.add('-classpath')
-                args.addAll(classPath)
+                args.add(classPath.join(";"))
             }
 
             ExitCode exitCode = compiler.exec(System.out, (String[]) args.toArray())
