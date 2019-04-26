@@ -10,8 +10,6 @@ import org.gradle.BuildResult
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.artifacts.DependencySubstitution
-import org.gradle.api.artifacts.component.ModuleComponentSelector
 import org.gradle.api.initialization.Settings
 import org.gradle.api.invocation.Gradle
 import org.gradle.api.publish.maven.MavenPublication
@@ -91,42 +89,33 @@ class MisPlugin implements Plugin<Project> {
 
             @Override
             void projectsEvaluated(Gradle gradle) {
-                project.configurations.all {
-                    publicationManager.getPublicationMap().values().each {
-                        if (it.invalid) {
-                            exclude module: "mis-${it.groupId}-${it.artifactId}"
-                            exclude group: it.groupId, module: it.artifactId
-                        }
-                    }
-
-                    resolutionStrategy.dependencySubstitution.all { DependencySubstitution dependency ->
-                        if (dependency.requested instanceof ModuleComponentSelector) {
-                            ModuleComponentSelector requested = (ModuleComponentSelector) dependency.requested
-                            if (requested.module.startsWith('mis-')) {
-                                String key = requested.module.substring(4)
-                                Publication publication = publicationManager.getPublicationByKey(key)
-                                if (publication != null) {
-                                    if (!publication.useLocal) {
-                                        def version = publication.version
-                                        if(version == null) {
-                                            version = misPublicationMap.get(requested.module).version
-                                        }
-                                        dependency.useTarget "${publication.groupId}:${publication.artifactId}:${version}"
-                                    }
+                publicationManager.getPublicationMap().values().each {
+                    Publication globalPublication = it
+                    def key = 'mis-' + globalPublication.groupId + '-' + globalPublication.artifactId
+                    Publication publication = misPublicationMap.get(key)
+                    if(publication != null) {
+                        if(globalPublication.invalid) {
+                            project.configurations.all {
+                                exclude module: 'mis-' + globalPublication.groupId + '-' + globalPublication.artifactId
+                                exclude group: globalPublication.groupId, module: globalPublication.artifactId
+                            }
+                        } else if(publication.useLocal && !globalPublication.useLocal) {
+                            project.configurations.all {
+                                resolutionStrategy.dependencySubstitution {
+                                    FlatDirModuleComponentSelector selector = FlatDirModuleComponentSelector.newSelector(key)
+                                    substitute selector with module("${globalPublication.groupId}:${globalPublication.artifactId}:${globalPublication.version}")
                                 }
-                            } else {
-                                Publication publication = publicationManager.getPublication(requested.group, requested.module)
-                                if (publication != null) {
-                                    if (publication.useLocal) {
-                                        FlatDirModuleComponentSelector selector = FlatDirModuleComponentSelector.newSelector("mis-${requested.group}-${requested.module}")
-                                        dependency.useTarget selector
-                                    }
+                            }
+                        } else if(!publication.useLocal && globalPublication.useLocal) {
+                            project.configurations.all {
+                                resolutionStrategy.dependencySubstitution {
+                                    FlatDirModuleComponentSelector selector = FlatDirModuleComponentSelector.newSelector(key)
+                                    substitute module("$publication.groupId:$publication.artifactId:$publication.version") with selector
                                 }
                             }
                         }
                     }
                 }
-
             }
 
             @Override
@@ -178,10 +167,10 @@ class MisPlugin implements Plugin<Project> {
 
     def initPublicationManager() {
         publicationManager = PublicationManager.getInstance()
-
         if (publicationManager.hasLoadManifest) {
             return
         }
+
         publicationManager.loadManifest(project.rootProject, executePublish)
     }
 
@@ -232,6 +221,7 @@ class MisPlugin implements Plugin<Project> {
             Publication existPublication = publicationManager.getPublication(groupId, artifactId)
             if (existPublication == null) {
                 if (version == null) {
+                    publication.useLocal = true
                     result = ":mis-${groupId}-${artifactId}:"
                 } else {
                     publication.version = version
@@ -242,6 +232,7 @@ class MisPlugin implements Plugin<Project> {
                     result = []
                 } else if (existPublication.version == null) {
                     if (version == null) {
+                        publication.useLocal = true
                         result = ":mis-${groupId}-${artifactId}:"
                     } else {
                         publication.version = version
@@ -274,7 +265,7 @@ class MisPlugin implements Plugin<Project> {
                 }
 
                 project.dependencies {
-                    implementation project.files(target)
+                    implementation ":mis-${publication.groupId}-${publication.artifactId}:"
                 }
                 return
             }
@@ -318,6 +309,8 @@ class MisPlugin implements Plugin<Project> {
         } else if (!hasModifiedSource) {
             Publication lastPublication = publicationManager.getPublication(publication.groupId, publication.artifactId)
             if (lastPublication.version != publication.version) {
+                publication.invalid = false
+                publication.useLocal = false
                 publicationManager.addPublication(publication)
             } else {
                 lastPublication.invalid = false

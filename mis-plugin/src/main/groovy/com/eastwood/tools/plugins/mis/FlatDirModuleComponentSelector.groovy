@@ -11,7 +11,6 @@ import org.gradle.api.internal.artifacts.ImmutableVersionConstraint
 import org.gradle.api.internal.artifacts.dependencies.DefaultImmutableVersionConstraint
 import org.gradle.api.internal.attributes.ImmutableAttributes
 import org.gradle.internal.component.external.model.DefaultModuleComponentSelector
-import org.gradle.internal.impldep.com.google.common.base.Objects
 
 public class FlatDirModuleComponentSelector implements ModuleComponentSelector {
 
@@ -30,7 +29,7 @@ public class FlatDirModuleComponentSelector implements ModuleComponentSelector {
         this.moduleIdentifier = module;
         this.versionConstraint = version;
         this.attributes = attributes;
-        this.hashCode = Objects.hashCode(version, module, attributes);
+        this.hashCode = Objects.hash(version, module, attributes);
     }
 
     public String getDisplayName() {
