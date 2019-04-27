@@ -17,6 +17,64 @@ import org.gradle.api.publish.maven.MavenPublication
 class MisPlugin implements Plugin<Project> {
 
     static boolean isClean
+    static Map<String, Publication> misPublicationMap
+    static BuildListener buildListener = new BuildListener() {
+        @Override
+        void buildStarted(Gradle gradle) {
+
+        }
+
+        @Override
+        void settingsEvaluated(Settings settings) {
+
+        }
+
+        @Override
+        void projectsLoaded(Gradle gradle) {
+
+        }
+
+        @Override
+        void projectsEvaluated(Gradle gradle) {
+            PublicationManager publicationManager = PublicationManager.getInstance()
+            gradle.rootProject.allprojects.each { Project project ->
+                publicationManager.getPublicationMap().values().each {
+                    Publication globalPublication = it
+                    def key = 'mis-' + globalPublication.groupId + '-' + globalPublication.artifactId
+                    Publication publication = misPublicationMap.get(key)
+                    if (publication != null) {
+                        if (globalPublication.invalid) {
+                            project.configurations.all {
+                                exclude module: 'mis-' + globalPublication.groupId + '-' + globalPublication.artifactId
+                                exclude group: globalPublication.groupId, module: globalPublication.artifactId
+                            }
+                        } else if (publication.useLocal && !globalPublication.useLocal) {
+                            project.configurations.all {
+                                resolutionStrategy.dependencySubstitution {
+                                    FlatDirModuleComponentSelector selector = FlatDirModuleComponentSelector.newSelector(key)
+                                    substitute selector with module("${globalPublication.groupId}:${globalPublication.artifactId}:${globalPublication.version}")
+                                }
+                            }
+                        } else if (!publication.useLocal && globalPublication.useLocal) {
+                            project.configurations.all {
+                                resolutionStrategy.dependencySubstitution {
+                                    FlatDirModuleComponentSelector selector = FlatDirModuleComponentSelector.newSelector(key)
+                                    substitute module("$publication.groupId:$publication.artifactId:$publication.version") with selector
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+        }
+
+        @Override
+        void buildFinished(BuildResult buildResult) {
+            isClean = false
+            misPublicationMap = null
+        }
+    }
 
     Project project
     File misDir
@@ -25,7 +83,6 @@ class MisPlugin implements Plugin<Project> {
     String publishPublication
 
     PublicationManager publicationManager
-    Map<String, Publication> misPublicationMap
     Map<String, Publication> publicationPublishMap
 
 
@@ -41,12 +98,6 @@ class MisPlugin implements Plugin<Project> {
             misDir.mkdirs()
         }
 
-        project.repositories {
-            flatDir {
-                dirs misDir.absolutePath
-            }
-        }
-
         project.gradle.getStartParameter().taskNames.each {
             if (!isClean && it == 'clean') {
                 misDir.deleteDir()
@@ -59,7 +110,18 @@ class MisPlugin implements Plugin<Project> {
 
         initPublicationManager()
 
-        this.misPublicationMap = new HashMap<>()
+        if (misPublicationMap == null) {
+            misPublicationMap = new HashMap<>()
+
+            project.rootProject.allprojects.each {
+                it.repositories {
+                    flatDir {
+                        dirs misDir.absolutePath
+                    }
+                }
+            }
+        }
+
         this.publicationPublishMap = new HashMap<>()
         this.isMicroModule = MisUtil.isMicroModule(project)
         MisExtension misExtension = project.extensions.create('mis', MisExtension, project)
@@ -72,57 +134,8 @@ class MisPlugin implements Plugin<Project> {
             handleMisPublication(value, false)
         }
 
-        project.gradle.addBuildListener(new BuildListener() {
-            @Override
-            void buildStarted(Gradle gradle) {
-
-            }
-
-            @Override
-            void settingsEvaluated(Settings settings) {
-
-            }
-
-            @Override
-            void projectsLoaded(Gradle gradle) {
-            }
-
-            @Override
-            void projectsEvaluated(Gradle gradle) {
-                publicationManager.getPublicationMap().values().each {
-                    Publication globalPublication = it
-                    def key = 'mis-' + globalPublication.groupId + '-' + globalPublication.artifactId
-                    Publication publication = misPublicationMap.get(key)
-                    if(publication != null) {
-                        if(globalPublication.invalid) {
-                            project.configurations.all {
-                                exclude module: 'mis-' + globalPublication.groupId + '-' + globalPublication.artifactId
-                                exclude group: globalPublication.groupId, module: globalPublication.artifactId
-                            }
-                        } else if(publication.useLocal && !globalPublication.useLocal) {
-                            project.configurations.all {
-                                resolutionStrategy.dependencySubstitution {
-                                    FlatDirModuleComponentSelector selector = FlatDirModuleComponentSelector.newSelector(key)
-                                    substitute selector with module("${globalPublication.groupId}:${globalPublication.artifactId}:${globalPublication.version}")
-                                }
-                            }
-                        } else if(!publication.useLocal && globalPublication.useLocal) {
-                            project.configurations.all {
-                                resolutionStrategy.dependencySubstitution {
-                                    FlatDirModuleComponentSelector selector = FlatDirModuleComponentSelector.newSelector(key)
-                                    substitute module("$publication.groupId:$publication.artifactId:$publication.version") with selector
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            @Override
-            void buildFinished(BuildResult buildResult) {
-                isClean = false
-            }
-        })
+        project.gradle.removeListener(buildListener)
+        project.gradle.addBuildListener(buildListener)
 
         project.afterEvaluate {
             MisUtil.addMisSourceSets(project)
@@ -207,30 +220,23 @@ class MisPlugin implements Plugin<Project> {
                     "\n  - Maps, for example [groupId: 'org.gradle', artifactId: 'gradle-core', version: '1.0'].")
         }
 
-        Publication publication = new Publication()
-        publication.groupId = groupId
-        publication.artifactId = artifactId
-
         def result
-        File target = new File(misDir, "mis-${groupId}-${artifactId}.jar")
-        if (target.exists()) {
-            publication.useLocal = true
-            publication.version = version
-            result = ":mis-${groupId}-${artifactId}:"
-        } else {
-            Publication existPublication = publicationManager.getPublication(groupId, artifactId)
-            if (existPublication == null) {
-                if (version == null) {
-                    publication.useLocal = true
-                    result = ":mis-${groupId}-${artifactId}:"
-                } else {
-                    publication.version = version
-                    result = "${groupId}:${artifactId}:${version}"
-                }
+        def key = "mis-" + groupId + "-" + artifactId
+        Publication publication = misPublicationMap.get(key)
+        if (publication == null) {
+            publication = new Publication()
+            publication.groupId = groupId
+            publication.artifactId = artifactId
+            misPublicationMap.put(key, publication)
+
+            File target = new File(misDir, "mis-${groupId}-${artifactId}.jar")
+            if (target.exists()) {
+                publication.useLocal = true
+                publication.version = version
+                result = ":mis-${groupId}-${artifactId}:"
             } else {
-                if (existPublication.invalid) {
-                    result = []
-                } else if (existPublication.version == null) {
+                Publication existPublication = publicationManager.getPublication(groupId, artifactId)
+                if (existPublication == null) {
                     if (version == null) {
                         publication.useLocal = true
                         result = ":mis-${groupId}-${artifactId}:"
@@ -239,13 +245,32 @@ class MisPlugin implements Plugin<Project> {
                         result = "${groupId}:${artifactId}:${version}"
                     }
                 } else {
-                    publication.version = existPublication.version
-                    result = "${groupId}:${artifactId}:${existPublication.version}"
+                    if (existPublication.invalid) {
+                        result = []
+                    } else if (existPublication.version == null) {
+                        if (version == null) {
+                            publication.useLocal = true
+                            result = ":mis-${groupId}-${artifactId}:"
+                        } else {
+                            publication.version = version
+                            result = "${groupId}:${artifactId}:${version}"
+                        }
+                    } else {
+                        publication.version = existPublication.version
+                        result = "${groupId}:${artifactId}:${existPublication.version}"
+                    }
                 }
+            }
+        } else {
+            if (publication.invalid) {
+                result = []
+            } else if (publication.useLocal) {
+                result = ':' + key + ':'
+            } else {
+                result = "$publication.groupId:$publication.artifactId:$publication.version"
             }
         }
 
-        misPublicationMap.put("mis-" + publication.groupId + "-" + publication.artifactId, publication)
         return result
     }
 
