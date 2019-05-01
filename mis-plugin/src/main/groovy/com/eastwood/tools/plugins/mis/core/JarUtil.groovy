@@ -37,8 +37,7 @@ class JarUtil {
         }
 
         def hasDependencies = false
-        def random = new Random()
-        def name = "mis_" + random.nextLong()
+        def name = "mis[${publication.groupId}:${publication.artifactId}]Classpath"
         project.configurations.create(name)
         if (publication.dependencies != null) {
             if (publication.dependencies.implementation != null) {
@@ -146,7 +145,7 @@ class JarUtil {
             }
 
             JavaVersion javaVersion = JavaVersion.toVersion(target)
-            if(javaVersion != JavaVersion.VERSION_1_8 && javaVersion != JavaVersion.VERSION_1_6) {
+            if (javaVersion != JavaVersion.VERSION_1_8 && javaVersion != JavaVersion.VERSION_1_6) {
                 throw new GradleException("Failure to compile mis kotlin source to bytecode: unknown JVM target version: $target, supported versions: 1.6, 1.8\nTry:\n " +
                         "   android {\n" +
                         "       ...\n" +

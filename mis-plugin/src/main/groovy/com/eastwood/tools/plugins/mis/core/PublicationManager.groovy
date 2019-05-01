@@ -150,7 +150,7 @@ class PublicationManager {
     }
 
     boolean hasModified(Publication publication) {
-        def key = publication.groupId + "" + publication.artifactId
+        def key = publication.groupId + "-" + publication.artifactId
         Publication lastPublication = publicationMap.get(key)
         if (lastPublication == null) {
             return true

@@ -100,7 +100,10 @@ class MisPlugin implements Plugin<Project> {
 
         project.gradle.getStartParameter().taskNames.each {
             if (!isClean && it == 'clean') {
-                misDir.deleteDir()
+                boolean result = misDir.deleteDir()
+                if (!result) {
+                    throw new RuntimeException("unable to delete dir " + misDir.absolute)
+                }
                 isClean = true
             } else if (it.startsWith('publishMis')) {
                 executePublish = true
@@ -127,11 +130,16 @@ class MisPlugin implements Plugin<Project> {
         MisExtension misExtension = project.extensions.create('mis', MisExtension, project)
 
         Dependencies.metaClass.misPublication { String value ->
-            handleMisPublication(value, true)
+            String[] gav = filterGAV(value)
+            handleMisPublication(gav[0], gav[1], gav[2])
         }
 
         project.dependencies.metaClass.misPublication { Object value ->
-            handleMisPublication(value, false)
+            if (executePublish) {
+                return []
+            }
+            String[] gav = filterGAV(value)
+            handleMisPublication(gav[0], gav[1], gav[2])
         }
 
         project.gradle.removeListener(buildListener)
@@ -187,11 +195,7 @@ class MisPlugin implements Plugin<Project> {
         publicationManager.loadManifest(project.rootProject, executePublish)
     }
 
-    Object handleMisPublication(Object value, boolean fromPublication) {
-        if (executePublish && !fromPublication) {
-            return []
-        }
-
+    String[] filterGAV(Object value) {
         String groupId = null, artifactId = null, version = null
         if (value instanceof String) {
             String[] values = value.split(":")
@@ -220,6 +224,10 @@ class MisPlugin implements Plugin<Project> {
                     "\n  - Maps, for example [groupId: 'org.gradle', artifactId: 'gradle-core', version: '1.0'].")
         }
 
+        return [groupId, artifactId, version]
+    }
+
+    Object handleMisPublication(String groupId, artifactId, version) {
         def result
         def key = "mis-" + groupId + "-" + artifactId
         Publication publication = misPublicationMap.get(key)
@@ -246,7 +254,9 @@ class MisPlugin implements Plugin<Project> {
                     }
                 } else {
                     if (existPublication.invalid) {
-                        result = []
+                        // result = []
+                        publication.useLocal = true
+                        result = ":mis-${groupId}-${artifactId}:"
                     } else if (existPublication.version == null) {
                         if (version == null) {
                             publication.useLocal = true
@@ -265,12 +275,11 @@ class MisPlugin implements Plugin<Project> {
             if (publication.invalid) {
                 result = []
             } else if (publication.useLocal) {
-                result = ':' + key + ':'
+                result = ":mis-$publication.groupId-$publication.artifactId:"
             } else {
                 result = "$publication.groupId:$publication.artifactId:$publication.version"
             }
         }
-
         return result
     }
 
@@ -469,8 +478,7 @@ class MisPlugin implements Plugin<Project> {
             if (it.name.startsWith(publishTaskNamePrefix)) {
                 it.dependsOn compileTask
                 it.doLast {
-                    File groupDir = project.rootProject.file(".gradle/mis/" + publication.groupId)
-                    new File(groupDir, publication.artifactId + ".jar").delete()
+                    new File(misDir, "mis-${publication.groupId}-${publication.artifactId}.jar").delete()
                 }
             }
         }
@@ -495,6 +503,10 @@ class MisPlugin implements Plugin<Project> {
                 if (publication.dependencies.implementation != null) {
                     publication.dependencies.implementation.each {
                         def gav = it.split(":")
+                        if (gav[1].startsWith('mis-')) {
+                            Publication dependencyPublication = misPublicationMap.get(gav[1])
+                            throw new RuntimeException("mis publication [$dependencyPublication.groupId:$dependencyPublication.artifactId] has not publish yet.")
+                        }
                         def dependencyNode = dependenciesNode.appendNode('dependency')
                         dependencyNode.appendNode('groupId', gav[0])
                         dependencyNode.appendNode('artifactId', gav[1])
