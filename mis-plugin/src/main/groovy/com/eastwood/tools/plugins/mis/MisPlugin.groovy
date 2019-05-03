@@ -105,6 +105,7 @@ class MisPlugin implements Plugin<Project> {
                     throw new RuntimeException("unable to delete dir " + misDir.absolute)
                 }
                 isClean = true
+                misDir.mkdirs()
             } else if (it.startsWith('publishMis')) {
                 executePublish = true
                 publishPublication = it.substring(it.indexOf('[') + 1, it.lastIndexOf(']'))
