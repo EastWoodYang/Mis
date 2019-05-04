@@ -6,6 +6,7 @@ import org.gradle.api.artifacts.component.ComponentIdentifier
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.artifacts.component.ModuleComponentSelector
 import org.gradle.api.attributes.AttributeContainer
+import org.gradle.api.capabilities.Capability
 import org.gradle.api.internal.artifacts.DefaultModuleIdentifier
 import org.gradle.api.internal.artifacts.ImmutableVersionConstraint
 import org.gradle.api.internal.artifacts.dependencies.DefaultImmutableVersionConstraint
@@ -17,19 +18,23 @@ public class FlatDirModuleComponentSelector implements ModuleComponentSelector {
     private final ModuleIdentifier moduleIdentifier;
     private final ImmutableVersionConstraint versionConstraint;
     private final ImmutableAttributes attributes;
+    private final List<Capability> requestedCapabilities
     private final int hashCode;
 
-    private FlatDirModuleComponentSelector(ModuleIdentifier module, ImmutableVersionConstraint version, ImmutableAttributes attributes) {
+    private FlatDirModuleComponentSelector(ModuleIdentifier module, ImmutableVersionConstraint version, ImmutableAttributes attributes, List<Capability> requestedCapabilities) {
         assert module != null: "module cannot be null";
 
         assert version != null: "version cannot be null";
 
         assert attributes != null: "attributes cannot be null";
 
+        assert requestedCapabilities != null : "capabilities cannot be null";
+
         this.moduleIdentifier = module;
         this.versionConstraint = version;
         this.attributes = attributes;
-        this.hashCode = Objects.hash(version, module, attributes);
+        this.requestedCapabilities = requestedCapabilities;
+        this.hashCode = Objects.hash(version, module, attributes, requestedCapabilities);
     }
 
     public String getDisplayName() {
@@ -78,6 +83,10 @@ public class FlatDirModuleComponentSelector implements ModuleComponentSelector {
         return this.attributes;
     }
 
+    List<Capability> getRequestedCapabilities() {
+        return this.requestedCapabilities
+    }
+
     public boolean matchesStrictly(ComponentIdentifier identifier) {
         assert identifier != null: "identifier cannot be null";
 
@@ -115,6 +124,6 @@ public class FlatDirModuleComponentSelector implements ModuleComponentSelector {
     }
 
     public static ModuleComponentSelector newSelector(String name) {
-        return new FlatDirModuleComponentSelector(DefaultModuleIdentifier.newId("", name), DefaultImmutableVersionConstraint.of(), ImmutableAttributes.EMPTY);
+        return new FlatDirModuleComponentSelector(DefaultModuleIdentifier.newId("", name), DefaultImmutableVersionConstraint.of(), ImmutableAttributes.EMPTY, new ArrayList<Capability>());
     }
 }

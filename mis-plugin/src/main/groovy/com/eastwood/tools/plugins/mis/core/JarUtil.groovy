@@ -37,7 +37,7 @@ class JarUtil {
         }
 
         def hasDependencies = false
-        def name = "mis[${publication.groupId}:${publication.artifactId}]Classpath"
+        def name = "mis[${publication.groupId}-${publication.artifactId}]Classpath"
         project.configurations.create(name)
         if (publication.dependencies != null) {
             if (publication.dependencies.implementation != null) {
