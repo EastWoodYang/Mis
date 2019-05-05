@@ -7,6 +7,6 @@ package com.eastwood.demo.kotlin
  */
 interface IKotlin {
 
-    fun test()
+    fun test(i: Int)
 
 }

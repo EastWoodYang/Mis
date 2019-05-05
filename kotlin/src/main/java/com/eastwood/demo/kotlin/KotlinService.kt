@@ -7,7 +7,7 @@ package com.eastwood.demo.kotlin
  */
 class KotlinService : IKotlin {
 
-    override fun test() {
+    override fun test(i: Int) {
 
     }
 

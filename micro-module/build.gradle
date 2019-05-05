@@ -1,10 +1,10 @@
 apply plugin: 'micro-module'
 apply plugin: 'com.android.library'
-apply plugin: 'mis'
 
 apply plugin: 'kotlin-android'
-
 apply plugin: 'kotlin-android-extensions'
+
+apply plugin: 'mis'
 
 android {
     compileSdkVersion 27

@@ -7,8 +7,7 @@ package com.eastwood.demo.kotlin;
 public class JavaObject implements IKotlin {
 
     @Override
-    public void test() {
+    public void test(int i) {
 
     }
-
 }
