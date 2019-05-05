@@ -6,6 +6,10 @@ mis {
         p_kotlin {
             groupId 'com.eastwood.demo'
             artifactId 'module-kotlin-sdk'
+
+            dependencies {
+                implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+            }
         }
     }
 }
