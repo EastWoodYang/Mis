@@ -8,16 +8,28 @@ import org.gradle.api.artifacts.dsl.RepositoryHandler
 class MisExtension {
 
     Project project
-    NamedDomainObjectContainer<Publication> publications
+    OnPublicationListener listener
+    Map<String, Publication> publicationMap
+
     Action<? super RepositoryHandler> configure
 
-    MisExtension(Project project) {
+    MisExtension(Project project, OnPublicationListener listener) {
         this.project = project
-        this.publications = project.container(Publication)
+        this.listener = listener
+        this.publicationMap = new HashMap<>()
     }
 
     void publications(Closure closure) {
+        NamedDomainObjectContainer<Publication> publications = project.container(Publication)
         publications.configure(closure)
+        publications.each {
+            if (publicationMap.containsKey(it.name)) {
+                return
+            }
+
+            publicationMap.put(it.name, it)
+            listener.onPublicationAdded(it)
+        }
     }
 
     void repositories(Action<? super RepositoryHandler> configure) {

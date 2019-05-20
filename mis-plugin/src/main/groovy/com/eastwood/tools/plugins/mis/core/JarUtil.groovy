@@ -5,6 +5,7 @@ import com.eastwood.tools.plugins.mis.core.extension.Publication
 import org.gradle.api.GradleException
 import org.gradle.api.JavaVersion
 import org.gradle.api.Project
+import org.gradle.api.artifacts.Configuration
 import org.gradle.internal.jvm.Jvm
 import org.jetbrains.kotlin.cli.common.ExitCode
 import org.jetbrains.kotlin.cli.jvm.K2JVMCompiler
@@ -38,7 +39,7 @@ class JarUtil {
 
         def hasDependencies = false
         def name = "mis[${publication.groupId}-${publication.artifactId}]Classpath"
-        project.configurations.create(name)
+        Configuration configuration = project.configurations.create(name)
         if (publication.dependencies != null) {
             if (publication.dependencies.implementation != null) {
                 publication.dependencies.implementation.each {
@@ -55,7 +56,7 @@ class JarUtil {
         }
 
         def classPath = []
-        project.configurations.getByName(name).resolve().each {
+        configuration.copy().resolve().each {
             if (it.name.endsWith('.aar')) {
                 classPath << getAARClassesJar(it)
             } else {
@@ -63,7 +64,7 @@ class JarUtil {
             }
         }
 
-        project.configurations.remove(project.configurations.getByName(name))
+        project.configurations.remove(configuration)
 
         if (classPath.isEmpty() && hasDependencies) {
             return null
