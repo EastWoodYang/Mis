@@ -11,7 +11,7 @@ dependencies {
     compile gradleApi()
     compile localGroovy()
     implementation 'com.android.tools.build:gradle:3.0.0'
-    implementation 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.3.0'
+    implementation 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.3.10'
 }
 
 apply plugin: 'maven'

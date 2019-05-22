@@ -158,7 +158,7 @@ class MisPlugin implements Plugin<Project> {
 
         Dependencies.metaClass.misPublication { String value ->
             String[] gav = filterGAV(value)
-            handleMisPublication(gav[0], gav[1], gav[2])
+            return handleMisPublication(gav[0], gav[1], gav[2])
         }
 
         project.dependencies.metaClass.misPublication { Object value ->
@@ -166,7 +166,7 @@ class MisPlugin implements Plugin<Project> {
                 return []
             }
             String[] gav = filterGAV(value)
-            handleMisPublication(gav[0], gav[1], gav[2])
+            return handleMisPublication(gav[0], gav[1], gav[2])
         }
 
         project.gradle.addBuildListener(buildListener)

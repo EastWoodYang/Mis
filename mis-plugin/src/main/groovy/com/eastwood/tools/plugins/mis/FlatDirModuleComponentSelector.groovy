@@ -15,72 +15,72 @@ import org.gradle.internal.component.external.model.DefaultModuleComponentSelect
 
 public class FlatDirModuleComponentSelector implements ModuleComponentSelector {
 
-    private final ModuleIdentifier moduleIdentifier;
-    private final ImmutableVersionConstraint versionConstraint;
-    private final ImmutableAttributes attributes;
+    private final ModuleIdentifier moduleIdentifier
+    private final ImmutableVersionConstraint versionConstraint
+    private final ImmutableAttributes attributes
     private final List<Capability> requestedCapabilities
-    private final int hashCode;
+    private final int hashCode
 
     private FlatDirModuleComponentSelector(ModuleIdentifier module, ImmutableVersionConstraint version, ImmutableAttributes attributes, List<Capability> requestedCapabilities) {
-        assert module != null: "module cannot be null";
+        assert module != null: "module cannot be null"
 
-        assert version != null: "version cannot be null";
+        assert version != null: "version cannot be null"
 
-        assert attributes != null: "attributes cannot be null";
+        assert attributes != null: "attributes cannot be null"
 
-        assert requestedCapabilities != null : "capabilities cannot be null";
+        assert requestedCapabilities != null: "capabilities cannot be null"
 
-        this.moduleIdentifier = module;
-        this.versionConstraint = version;
-        this.attributes = attributes;
-        this.requestedCapabilities = requestedCapabilities;
-        this.hashCode = Objects.hash(version, module, attributes, requestedCapabilities);
+        this.moduleIdentifier = module
+        this.versionConstraint = version
+        this.attributes = attributes
+        this.requestedCapabilities = requestedCapabilities
+        this.hashCode = Objects.hash(version, module, attributes, requestedCapabilities)
     }
 
     public String getDisplayName() {
-        String group = this.moduleIdentifier.getGroup();
-        String module = this.moduleIdentifier.getName();
-        String version = this.getVersion();
-        StringBuilder builder = new StringBuilder(group.length() + module.length() + this.versionConstraint.getRequiredVersion().length() + 2);
-        builder.append(group);
-        builder.append(":");
-        builder.append(module);
+        String group = this.moduleIdentifier.getGroup()
+        String module = this.moduleIdentifier.getName()
+        String version = this.getVersion()
+        StringBuilder builder = new StringBuilder(group.length() + module.length() + this.versionConstraint.getRequiredVersion().length() + 2)
+        builder.append(group)
+        builder.append(":")
+        builder.append(module)
         if (version.length() > 0) {
-            builder.append(":");
-            builder.append(version);
+            builder.append(":")
+            builder.append(version)
         }
 
         if (this.versionConstraint.getBranch() != null) {
-            builder.append(" (branch: ");
-            builder.append(this.versionConstraint.getBranch());
-            builder.append(")");
+            builder.append(" (branch: ")
+            builder.append(this.versionConstraint.getBranch())
+            builder.append(")")
         }
 
-        return builder.toString();
+        return builder.toString()
     }
 
     public String getGroup() {
-        return this.moduleIdentifier.getGroup();
+        return this.moduleIdentifier.getGroup()
     }
 
     public String getModule() {
-        return this.moduleIdentifier.getName();
+        return this.moduleIdentifier.getName()
     }
 
     public String getVersion() {
-        return this.versionConstraint.getRequiredVersion().isEmpty() ? this.versionConstraint.getPreferredVersion() : this.versionConstraint.getRequiredVersion();
+        return this.versionConstraint.getRequiredVersion().isEmpty() ? this.versionConstraint.getPreferredVersion() : this.versionConstraint.getRequiredVersion()
     }
 
     public VersionConstraint getVersionConstraint() {
-        return this.versionConstraint;
+        return this.versionConstraint
     }
 
     public ModuleIdentifier getModuleIdentifier() {
-        return this.moduleIdentifier;
+        return this.moduleIdentifier
     }
 
     public AttributeContainer getAttributes() {
-        return this.attributes;
+        return this.attributes
     }
 
     List<Capability> getRequestedCapabilities() {
@@ -88,42 +88,38 @@ public class FlatDirModuleComponentSelector implements ModuleComponentSelector {
     }
 
     public boolean matchesStrictly(ComponentIdentifier identifier) {
-        assert identifier != null: "identifier cannot be null";
+        assert identifier != null: "identifier cannot be null"
 
-        if (!(identifier instanceof ModuleComponentIdentifier)) {
-            return false;
-        } else {
-            ModuleComponentIdentifier moduleComponentIdentifier = (ModuleComponentIdentifier) identifier;
-            return this.moduleIdentifier.getName().equals(moduleComponentIdentifier.getModule());
+        if (identifier instanceof ModuleComponentIdentifier) {
+            ModuleComponentIdentifier moduleComponentIdentifier = (ModuleComponentIdentifier) identifier
+            if (this.moduleIdentifier.getGroup() == moduleComponentIdentifier.getGroup()
+                    && this.moduleIdentifier.getName() == moduleComponentIdentifier.getModule()) {
+                return true
+            }
         }
+        return false
     }
 
     public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        } else if (o != null && this.getClass() == o.getClass()) {
-            DefaultModuleComponentSelector that = (DefaultModuleComponentSelector) o;
-            if (!this.moduleIdentifier.equals(that.moduleIdentifier)) {
-                return false;
-            } else if (!this.versionConstraint.equals(that.versionConstraint)) {
-                return false;
-            } else {
-                return this.attributes.equals(that.attributes);
+        if (o != null && o instanceof DefaultModuleComponentSelector) {
+            DefaultModuleComponentSelector selector = (DefaultModuleComponentSelector) o
+            if (this.moduleIdentifier.getName() == selector.moduleIdentifier.getName() &&
+                    this.moduleIdentifier.getGroup() == selector.moduleIdentifier.getGroup()) {
+                return true
             }
-        } else {
-            return false;
         }
+        return false
     }
 
     public int hashCode() {
-        return this.hashCode;
+        return this.hashCode
     }
 
     public String toString() {
-        return this.getDisplayName();
+        return this.getDisplayName()
     }
 
     public static ModuleComponentSelector newSelector(String name) {
-        return new FlatDirModuleComponentSelector(DefaultModuleIdentifier.newId("", name), DefaultImmutableVersionConstraint.of(), ImmutableAttributes.EMPTY, new ArrayList<Capability>());
+        return new FlatDirModuleComponentSelector(DefaultModuleIdentifier.newId("", name), DefaultImmutableVersionConstraint.of(), ImmutableAttributes.EMPTY, new ArrayList<Capability>())
     }
 }

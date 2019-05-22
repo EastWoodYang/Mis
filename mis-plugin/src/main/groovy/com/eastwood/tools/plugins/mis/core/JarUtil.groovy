@@ -37,38 +37,30 @@ class JarUtil {
             return null
         }
 
-        def hasDependencies = false
         def name = "mis[${publication.groupId}-${publication.artifactId}]Classpath"
         Configuration configuration = project.configurations.create(name)
         if (publication.dependencies != null) {
             if (publication.dependencies.implementation != null) {
                 publication.dependencies.implementation.each {
-                    hasDependencies = true
                     project.dependencies.add(name, it)
                 }
             }
             if (publication.dependencies.compileOnly != null) {
                 publication.dependencies.compileOnly.each {
-                    hasDependencies = true
                     project.dependencies.add(name, it)
                 }
             }
         }
-
         def classPath = []
-        configuration.copy().resolve().each {
+        configuration.copy().files.each {
             if (it.name.endsWith('.aar')) {
                 classPath << getAARClassesJar(it)
             } else {
                 classPath << it.absolutePath
             }
         }
-
         project.configurations.remove(configuration)
 
-        if (classPath.isEmpty() && hasDependencies) {
-            return null
-        }
         BaseExtension android = project.extensions.getByName('android')
         classPath << project.android.bootClasspath[0].toString()
 
@@ -102,16 +94,15 @@ class JarUtil {
     static boolean compareMavenJar(Project project, Publication publication, String localPath) {
         String filePath = null
         String fileName = publication.artifactId + "-" + publication.version + ".jar"
-        def random = new Random()
-        def name = "mis_" + random.nextLong()
-        project.configurations.create(name)
+        def name = "mis[${publication.groupId}-${publication.artifactId}]Classpath"
+        Configuration configuration = project.configurations.create(name)
         project.dependencies.add(name, publication.groupId + ":" + publication.artifactId + ":" + publication.version)
-        project.configurations.getByName(name).resolve().each {
+        configuration.copy().files.each {
             if (it.name.endsWith(fileName)) {
                 filePath = it.absolutePath
             }
         }
-        project.configurations.remove(project.configurations.getByName(name))
+        project.configurations.remove(configuration)
 
         if (filePath == null) return false
         return compareJar(localPath, filePath)
