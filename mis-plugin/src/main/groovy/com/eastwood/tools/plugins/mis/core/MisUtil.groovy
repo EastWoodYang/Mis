@@ -49,10 +49,6 @@ class MisUtil {
         }
     }
 
-    static boolean isMicroModule(Project project) {
-        return project.plugins.findPlugin("micro-module")
-    }
-
     static boolean hasAndroidPlugin(Project project) {
         if (project.plugins.findPlugin("com.android.application") || project.plugins.findPlugin("android") ||
                 project.plugins.findPlugin("com.android.test")) {
@@ -62,6 +58,29 @@ class MisUtil {
         } else {
             return false
         }
+    }
+
+    static String getAndroidJarPath(Project project, int compileSdkVersion) {
+        def androidHome
+        def env = System.getenv()
+        if (env['ANDROID_HOME'] != null) {
+            androidHome = env['ANDROID_HOME']
+        } else {
+            def localProperties = new File(project.rootProject.rootDir, "local.properties")
+            if (localProperties.exists()) {
+                Properties properties = new Properties()
+                localProperties.withInputStream { instr ->
+                    properties.load(instr)
+                }
+                androidHome = properties.getProperty('sdk.dir')
+            }
+        }
+
+        def androidJar = new File(androidHome, "/platforms/android-${compileSdkVersion}/android.jar")
+        if (!androidJar.exists()) {
+            throw new RuntimeException("Failed to find Platform SDK with path: platforms;android-$compileSdkVersion")
+        }
+        return androidJar.absolutePath
     }
 
     static void copyFile(File source, File target) {

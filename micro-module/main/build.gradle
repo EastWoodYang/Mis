@@ -1,12 +1,3 @@
-mis {
-    publications {
-        main {
-            groupId 'com.eastwood.demo'
-            artifactId 'module-main-sdk'
-        }
-    }
-}
-
 dependencies {
 
 }

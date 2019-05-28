@@ -1,6 +1,7 @@
 package com.eastwood.tools.plugins.mis.core
 
-import com.android.build.gradle.BaseExtension
+
+import com.eastwood.tools.plugins.mis.core.extension.CompileOptions
 import com.eastwood.tools.plugins.mis.core.extension.Publication
 import org.gradle.api.GradleException
 import org.gradle.api.JavaVersion
@@ -17,7 +18,7 @@ import java.util.zip.ZipFile
 
 class JarUtil {
 
-    static File packJavaSourceJar(Project project, Publication publication, boolean vars) {
+    static File packJavaSourceJar(Project project, Publication publication, String androidJarPath, CompileOptions compileOptions, boolean vars) {
         publication.buildDir.deleteDir()
         publication.buildDir.mkdirs()
         def sourceDir = new File(publication.buildDir, "source")
@@ -28,10 +29,7 @@ class JarUtil {
         outputsDir.mkdirs()
 
         def argFiles = []
-
-        publication.sourceSets.each {
-            filterJavaSource(new File(it.value.path), it.value.path, sourceDir, argFiles, publication.sourceFilter)
-        }
+        filterJavaSource(new File(publication.misSourceSet.path), publication.misSourceSet.path, sourceDir, argFiles, publication.sourceFilter)
 
         if (argFiles.size() == 0) {
             return null
@@ -51,7 +49,7 @@ class JarUtil {
                 }
             }
         }
-        def classPath = []
+        def classPath = [androidJarPath]
         configuration.copy().files.each {
             if (it.name.endsWith('.aar')) {
                 classPath << getAARClassesJar(it)
@@ -61,32 +59,15 @@ class JarUtil {
         }
         project.configurations.remove(configuration)
 
-        BaseExtension android = project.extensions.getByName('android')
-        classPath << project.android.bootClasspath[0].toString()
-
-        def target = android.compileOptions.targetCompatibility.versionName
-        def source = android.compileOptions.sourceCompatibility.versionName
-        return generateJavaSourceJar(classesDir, argFiles, classPath, target, source, vars)
+        return generateJavaSourceJar(classesDir, argFiles, classPath, compileOptions, vars)
     }
 
-    static File packJavaDocSourceJar(Project project, Publication publication) {
+    static File packJavaDocSourceJar(Publication publication) {
         def javaSource = new File(publication.buildDir, "javaSource")
         javaSource.deleteDir()
         javaSource.mkdirs()
 
-        BaseExtension android = project.extensions.getByName('android')
-        def sourceSets = android.sourceSets.getByName(publication.sourceSetName)
-        sourceSets.aidl.srcDirs.each {
-            if (!it.absolutePath.endsWith("mis")) return
-
-            if (publication.microModuleName != null) {
-                if (it.absolutePath.endsWith(publication.microModuleName + "${File.separator}src${File.separator + publication.sourceSetName + File.separator}mis")) {
-                    filterJavaDocSource(it, it.absolutePath, javaSource)
-                }
-            } else {
-                filterJavaDocSource(it, it.absolutePath, javaSource)
-            }
-        }
+        filterJavaDocSource(new File(publication.misSourceSet.path), publication.misSourceSet.path, javaSource)
 
         return generateJavaDocSourceJar(javaSource)
     }
@@ -111,10 +92,11 @@ class JarUtil {
     private static File generateJavaSourceJar(File classesDir,
                                               List<String> argFiles,
                                               List<String> classPath,
-                                              def target, def source, boolean vars) {
+                                              CompileOptions compileOptions,
+                                              boolean vars) {
 
 
-        boolean keepParameters = vars && Jvm.current().javaVersion.compareTo(JavaVersion.VERSION_1_8) >= 0
+        boolean keepParameters = vars && Jvm.current().javaVersion >= JavaVersion.VERSION_1_8
         List<String> javaFiles = new ArrayList<>()
         List<String> kotlinFiles = new ArrayList<>()
         argFiles.each {
@@ -136,10 +118,11 @@ class JarUtil {
                 args.add('-java-parameters')
             }
 
-            JavaVersion javaVersion = JavaVersion.toVersion(target)
-            if (javaVersion != JavaVersion.VERSION_1_8 && javaVersion != JavaVersion.VERSION_1_6) {
+            JavaVersion targetCompatibility = compileOptions.targetCompatibility
+            def target = targetCompatibility.toString()
+            if (!targetCompatibility.isJava8() && !targetCompatibility.isJava6()) {
                 throw new GradleException("Failure to compile mis kotlin source to bytecode: unknown JVM target version: $target, supported versions: 1.6, 1.8\nTry:\n " +
-                        "   android {\n" +
+                        "   mis {\n" +
                         "       ...\n" +
                         "       compileOptions {\n" +
                         "           sourceCompatibility JavaVersion.VERSION_1_8\n" +
@@ -172,7 +155,7 @@ class JarUtil {
             if (!System.properties['os.name'].toLowerCase().contains('windows')) {
                 classpathSeparator = ":"
             }
-            def command = "javac " + (keepParameters ? "-parameters" : "") + " -d . -encoding UTF-8 -target " + target + " -source " + source + (classPath.size() > 0 ? (" -classpath " + classPath.join(classpathSeparator) + " ") : "") + javaFiles.join(' ')
+            def command = "javac " + (keepParameters ? "-parameters" : "") + " -d . -encoding UTF-8 -target " + compileOptions.targetCompatibility.toString() + " -source " + compileOptions.sourceCompatibility.toString() + (classPath.size() > 0 ? (" -classpath " + classPath.join(classpathSeparator) + " ") : "") + javaFiles.join(' ')
             def p = (command).execute(null, classesDir)
 
             def result = p.waitFor(30, TimeUnit.SECONDS)

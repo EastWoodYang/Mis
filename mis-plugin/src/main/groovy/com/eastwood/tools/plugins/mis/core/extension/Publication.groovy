@@ -7,12 +7,11 @@ class Publication {
 
     String name
     String sourceSetName
-    String microModuleName
     File buildDir
 
     String project
 
-    Map<String, SourceSet> sourceSets
+    SourceSet misSourceSet
 
     String groupId
     String artifactId

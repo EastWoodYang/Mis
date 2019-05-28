@@ -1,12 +1,3 @@
-mis {
-    publications {
-        p_common {
-            groupId 'com.eastwood.demo'
-            artifactId 'module-common-sdk'
-        }
-    }
-}
-
 dependencies {
 
 }

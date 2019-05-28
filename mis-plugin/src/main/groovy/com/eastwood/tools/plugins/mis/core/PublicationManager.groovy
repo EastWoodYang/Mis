@@ -22,7 +22,6 @@ class PublicationManager {
 
     private File misDir
     private Map<String, Publication> publicationMap
-    private boolean hasModified
     private boolean executePublish
 
     static getInstance() {
@@ -35,7 +34,6 @@ class PublicationManager {
     void loadManifest(Project rootProject, boolean executePublish) {
         this.executePublish = executePublish
         hasLoadManifest = true
-        hasModified = false
         publicationMap = new HashMap<>()
 
         rootProject.gradle.buildFinished {
@@ -44,18 +42,7 @@ class PublicationManager {
                 return
             }
 
-            if(!hasModified) {
-                publicationMap.values().each {
-                    if(!it.hit && !it.invalid) {
-                        hasModified = true
-                    }
-                }
-            }
-
-            if(hasModified) {
-                hasModified = false
-                saveManifest()
-            }
+            saveManifest()
         }
 
         misDir = new File(rootProject.rootDir, '.gradle/mis')
@@ -80,13 +67,11 @@ class PublicationManager {
             publication.artifactId = publicationElement.getAttribute("artifactId")
             publication.version = publicationElement.getAttribute("version")
             if(publication.version == "") publication.version = null
-            publication.microModuleName = publicationElement.getAttribute("microModule")
             publication.invalid = Boolean.valueOf(publicationElement.getAttribute("invalid"))
 
-            publication.sourceSets = new HashMap<>()
-            NodeList sourceSetNodeList = publicationElement.getElementsByTagName("sourceSet")
-            for (int j = 0; j < sourceSetNodeList.getLength(); j++) {
-                Element sourceSetElement = (Element) sourceSetNodeList.item(j)
+            if (!publication.invalid) {
+                NodeList sourceSetNodeList = publicationElement.getElementsByTagName("sourceSet")
+                Element sourceSetElement = (Element) sourceSetNodeList.item(0)
                 SourceSet sourceSet = new SourceSet()
                 sourceSet.path = sourceSetElement.getAttribute("path")
                 sourceSet.lastModifiedSourceFile = new HashMap<>()
@@ -98,9 +83,10 @@ class PublicationManager {
                     sourceFile.lastModified = fileElement.getAttribute("lastModified").toLong()
                     sourceSet.lastModifiedSourceFile.put(sourceFile.path, sourceFile)
                 }
-                publication.sourceSets.put(sourceSet.path, sourceSet)
+                publication.misSourceSet = sourceSet
             }
-            publicationMap.put(publication.groupId + "-" + publication.artifactId, publication)
+
+            publicationMap.put("${publication.groupId}-${publication.artifactId}", publication)
         }
 
     }
@@ -123,14 +109,12 @@ class PublicationManager {
             publicationElement.setAttribute('groupId', publication.groupId)
             publicationElement.setAttribute('artifactId', publication.artifactId)
             publicationElement.setAttribute('version', publication.version)
-            publicationElement.setAttribute('microModule', publication.microModuleName)
             publicationElement.setAttribute('invalid', publication.invalid ? "true" : "false")
 
-            publication.sourceSets.each {
-                SourceSet sourceSet = it.value
+            if (!publication.invalid) {
                 Element sourceSetElement = document.createElement('sourceSet')
-                sourceSetElement.setAttribute('path', sourceSet.path)
-                sourceSet.lastModifiedSourceFile.each {
+                sourceSetElement.setAttribute('path', publication.misSourceSet.path)
+                publication.misSourceSet.lastModifiedSourceFile.each {
                     SourceFile sourceFile = it.value
                     Element sourceFileElement = document.createElement('file')
                     sourceFileElement.setAttribute('path', sourceFile.path)
@@ -150,8 +134,7 @@ class PublicationManager {
     }
 
     boolean hasModified(Publication publication) {
-        def key = publication.groupId + "-" + publication.artifactId
-        Publication lastPublication = publicationMap.get(key)
+        Publication lastPublication = publicationMap.get("${publication.groupId}-${publication.artifactId}")
         if (lastPublication == null) {
             return true
         }
@@ -160,24 +143,11 @@ class PublicationManager {
             return true
         }
 
-        return hasModifiedSourceSet(publication.sourceSets, lastPublication.sourceSets)
+        return hasModifiedSourceSet(publication.misSourceSet, lastPublication.misSourceSet)
     }
 
-    private boolean hasModifiedSourceSet(Map<String, SourceSet> map1, Map<String, SourceSet> map2) {
-        if (map1.size() != map2.size()) {
-            return true
-        }
-        for (Map.Entry<String, SourceSet> entry1 : map1.entrySet()) {
-            SourceSet sourceSet1 = entry1.getValue()
-            SourceSet sourceSet2 = map2.get(entry1.getKey())
-            if (sourceSet2 == null) {
-                return true
-            }
-            if (hasModifiedSourceFile(sourceSet1.lastModifiedSourceFile, sourceSet2.lastModifiedSourceFile)) {
-                return true
-            }
-        }
-        return false
+    private boolean hasModifiedSourceSet(SourceSet sourceSet1, SourceSet sourceSet2) {
+        return hasModifiedSourceFile(sourceSet1.lastModifiedSourceFile, sourceSet2.lastModifiedSourceFile)
     }
 
     private boolean hasModifiedSourceFile(Map<String, SourceFile> map1, Map<String, SourceFile> map2) {
@@ -199,14 +169,7 @@ class PublicationManager {
 
     void addPublication(Publication publication) {
         def key = publication.groupId + "-" + publication.artifactId
-        def oldPublication = publicationMap.put(key, publication)
-        if(publication.invalid) {
-            if(oldPublication != null && !oldPublication.invalid) {
-                hasModified = true
-            }
-        } else {
-            hasModified = true
-        }
+        publicationMap.put(key, publication)
     }
 
     Publication getPublication(String groupId, String artifactId) {
@@ -218,8 +181,17 @@ class PublicationManager {
         return publicationMap.get(key)
     }
 
-    Map<String, Publication> getPublicationMap() {
-        return publicationMap
+    List<Publication> getPublicationByProject(Project project) {
+        String displayName = project.getDisplayName()
+        String projectName = displayName.substring(displayName.indexOf("'") + 1, displayName.lastIndexOf("'"))
+
+        List<Publication> publications = new ArrayList<>()
+        publicationMap.each {
+            if (projectName == it.value.project) {
+                publications.add(it.value)
+            }
+        }
+        return publications
     }
 
     void hitPublication(Publication publication) {
@@ -237,8 +209,7 @@ class PublicationManager {
     private void validPublication(Publication publication, Publication oldPublication) {
         if(oldPublication == null) return
 
-        if(publication.project != oldPublication.project
-                || publication.microModuleName != oldPublication.microModuleName) {
+        if (publication.project != oldPublication.project) {
             throw new GradleException("Already exists publication " + publication.groupId + ":" + publication.artifactId + " in project '${oldPublication.project}'.")
         }
     }

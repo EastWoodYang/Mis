@@ -3,7 +3,6 @@ package com.eastwood.tools.plugins.mis
 import com.eastwood.tools.plugins.mis.core.JarUtil
 import com.eastwood.tools.plugins.mis.core.PublicationManager
 import com.eastwood.tools.plugins.mis.core.extension.Publication
-
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction
 
@@ -14,11 +13,11 @@ class CompileMisTask extends DefaultTask {
     @TaskAction
     void compileSource() {
         def project = getProject()
-        def releaseJar = JarUtil.packJavaSourceJar(project, publication, false)
+        def releaseJar = JarUtil.packJavaSourceJar(project, publication, MisPlugin.androidJarPath, MisPlugin.misExtension.compileOptions, false)
         if (releaseJar == null) {
             throw new RuntimeException("nothing to push.")
         }
-        JarUtil.packJavaDocSourceJar(project, publication)
+        JarUtil.packJavaDocSourceJar(publication)
 
         PublicationManager publicationManager = PublicationManager.getInstance()
         publicationManager.addPublication(publication)

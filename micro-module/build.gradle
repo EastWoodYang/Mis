@@ -4,8 +4,6 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
-apply plugin: 'mis'
-
 android {
     compileSdkVersion 27
 
@@ -14,6 +12,10 @@ android {
         targetSdkVersion 27
         versionCode 1
         versionName "1.0"
+
+        androidExtensions {
+            experimental = true
+        }
     }
 
     buildTypes {
@@ -46,18 +48,4 @@ dependencies {
     // or
     // implementation 'com.eastwood.common:mis:1.0.0'
 
-}
-
-apply plugin: 'maven-publish'
-
-publishing {
-    repositories {
-        maven {
-            url "http://***"
-            credentials {
-                username '***'
-                password '***'
-            }
-        }
-    }
 }

@@ -1,19 +1,6 @@
 // MicroModule build file where you can add configuration options to publish MicroModule(aar) to Maven 
 // and declare MicroModule dependencies.
 
-mis {
-    publications {
-        p_kotlin {
-            groupId 'com.eastwood.demo'
-            artifactId 'module-kotlin-sdk'
-
-            dependencies {
-                implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-            }
-        }
-    }
-}
-
 dependencies {
     implementation fileTree(dir: 'p_kotlin/libs', include: ['*.jar'])
 }
