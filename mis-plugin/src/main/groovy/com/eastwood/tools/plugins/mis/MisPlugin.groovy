@@ -3,7 +3,6 @@ package com.eastwood.tools.plugins.mis
 import com.android.build.gradle.AppPlugin
 import com.android.build.gradle.LibraryPlugin
 import com.eastwood.tools.plugins.mis.core.*
-import com.eastwood.tools.plugins.mis.core.extension.Dependencies
 import com.eastwood.tools.plugins.mis.core.extension.MisExtension
 import com.eastwood.tools.plugins.mis.core.extension.OnMisExtensionListener
 import com.eastwood.tools.plugins.mis.core.extension.Publication
@@ -14,26 +13,23 @@ import org.gradle.api.publish.maven.MavenPublication
 
 class MisPlugin implements Plugin<Project> {
 
+    static File misDir
     static MisExtension misExtension
+
     static String androidJarPath
 
     static PublicationManager publicationManager
 
     Project project
-    File misDir
-    boolean executePublish
-    String publishPublication
-
-    Map<String, Publication> publicationPublishMap
 
     void apply(Project project) {
         this.project = project
-        misDir = new File(project.rootProject.projectDir, '.gradle/mis')
-        if (!misDir.exists()) {
-            misDir.mkdirs()
-        }
 
         if (project == project.rootProject) {
+            misDir = new File(project.projectDir, '.gradle/mis')
+            if (!misDir.exists()) {
+                misDir.mkdirs()
+            }
 
             project.gradle.getStartParameter().taskNames.each {
                 if (it == 'clean') {
@@ -51,7 +47,7 @@ class MisPlugin implements Plugin<Project> {
             }
 
             publicationManager = PublicationManager.getInstance()
-            publicationManager.loadManifest(project.rootProject, executePublish)
+            publicationManager.loadManifest(project, misDir)
 
             misExtension = project.extensions.create('mis', MisExtension, new OnMisExtensionListener() {
                 @Override
@@ -69,14 +65,15 @@ class MisPlugin implements Plugin<Project> {
 
             project.childProjects.each {
                 Project childProject = it.value
+                childProject.repositories {
+                    flatDir {
+                        dirs misDir.absolutePath
+                    }
+                }
+
                 childProject.plugins.whenObjectAdded {
                     if (it instanceof AppPlugin || it instanceof LibraryPlugin) {
                         childProject.pluginManager.apply('mis')
-                        childProject.repositories {
-                            flatDir {
-                                dirs misDir.absolutePath
-                            }
-                        }
                     }
                 }
             }
@@ -102,25 +99,12 @@ class MisPlugin implements Plugin<Project> {
             throw new GradleException("The android or android-library plugin must be applied to the project.")
         }
 
-        project.gradle.getStartParameter().taskNames.each {
-            if (it.startsWith('publishMis')) {
-                executePublish = true
-                publishPublication = it.substring(it.indexOf('[') + 1, it.lastIndexOf(']'))
-            }
-        }
-
-        this.publicationPublishMap = new HashMap<>()
-
-        Dependencies.metaClass.misPublication { String value ->
+        com.eastwood.tools.plugins.mis.core.extension.Dependencies.metaClass.misPublication { String value ->
             String[] gav = filterGAV(value)
             return getPublication(gav)
         }
 
         project.dependencies.metaClass.misPublication { Object value ->
-            def result = []
-            if (executePublish) {
-                return result
-            }
             String[] gav = filterGAV(value)
             return getPublication(gav)
         }
@@ -135,19 +119,26 @@ class MisPlugin implements Plugin<Project> {
         project.afterEvaluate {
             MisUtil.addMisSourceSets(project)
 
-            if (publicationPublishMap.size() == 0) {
-                return
+            List<Publication> publicationList = publicationManager.getPublicationByProject(project)
+            List<Publication> publicationPublishList = new ArrayList<>()
+            publicationList.each {
+                if (it.version != null) {
+                    publicationPublishList.add(it)
+                }
             }
 
-            project.plugins.apply('maven-publish')
-            def publishing = project.extensions.getByName('publishing')
-            if (misExtension.configure != null) {
-                publishing.repositories misExtension.configure
+            if (publicationPublishList.size() > 0) {
+                project.plugins.apply('maven-publish')
+                def publishing = project.extensions.getByName('publishing')
+                if (misExtension.configure != null) {
+                    publishing.repositories misExtension.configure
+                }
+
+                publicationPublishList.each {
+                    createPublishTask(it)
+                }
             }
 
-            publicationPublishMap.each {
-                createPublishTask(it.value)
-            }
         }
     }
 
@@ -240,6 +231,11 @@ class MisPlugin implements Plugin<Project> {
                 return
             }
         } else if (!hasModifiedSource) {
+            Publication lastPublication = publicationManager.getPublication(publication.groupId, publication.artifactId)
+            if (lastPublication.version != publication.version) {
+                publication.versionNew = publication.version
+                publication.version = lastPublication.version
+            }
             publication.invalid = false
             publication.useLocal = false
             publicationManager.addPublication(publication)
@@ -284,7 +280,7 @@ class MisPlugin implements Plugin<Project> {
         if (publication.sourceSetName.contains('/')) {
             misDir = project.file(publication.sourceSetName + '/mis/')
         } else {
-            misDir = project.file('src/' + publication.sourceSetName + '/mis/')
+            misDir = project.file("src/${publication.sourceSetName}/mis/")
         }
         misSourceSet.path = misDir.absolutePath
         misSourceSet.lastModifiedSourceFile = new HashMap<>()
@@ -333,7 +329,7 @@ class MisPlugin implements Plugin<Project> {
     }
 
     void createPublishTask(Publication publication) {
-        def taskName = 'compileMis[' + publication.artifactId + ']Source'
+        def taskName = "compileMis[${publication.artifactId}]Source"
         def compileTask = project.getTasks().findByName(taskName)
         if (compileTask == null) {
             compileTask = project.getTasks().create(taskName, CompileMisTask.class)
@@ -341,8 +337,8 @@ class MisPlugin implements Plugin<Project> {
             compileTask.dependsOn 'clean'
         }
 
-        def publicationName = 'Mis[' + publication.artifactId + "]"
-        String publishTaskNamePrefix = "publish" + publicationName + "PublicationTo"
+        def publicationName = "Mis[${publication.artifactId}]"
+        String publishTaskNamePrefix = "publish${publicationName}PublicationTo"
         project.tasks.whenTaskAdded {
             if (it.name.startsWith(publishTaskNamePrefix)) {
                 it.dependsOn compileTask
@@ -359,7 +355,7 @@ class MisPlugin implements Plugin<Project> {
         MavenPublication mavenPublication = publishing.publications.maybeCreate(publicationName, MavenPublication)
         mavenPublication.groupId = publication.groupId
         mavenPublication.artifactId = publication.artifactId
-        mavenPublication.version = publication.version
+        mavenPublication.version = publication.versionNew != null ? publication.versionNew : publication.version
         mavenPublication.pom.packaging = 'jar'
 
         def outputsDir = new File(publication.buildDir, "outputs")

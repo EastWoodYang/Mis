@@ -76,6 +76,10 @@ class MisUtil {
             }
         }
 
+        if (compileSdkVersion == 0) {
+            throw new RuntimeException("mis compileSdkVersion is not specified.")
+        }
+
         def androidJar = new File(androidHome, "/platforms/android-${compileSdkVersion}/android.jar")
         if (!androidJar.exists()) {
             throw new RuntimeException("Failed to find Platform SDK with path: platforms;android-$compileSdkVersion")

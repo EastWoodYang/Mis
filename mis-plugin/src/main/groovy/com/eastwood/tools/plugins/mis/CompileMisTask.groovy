@@ -20,6 +20,9 @@ class CompileMisTask extends DefaultTask {
         JarUtil.packJavaDocSourceJar(publication)
 
         PublicationManager publicationManager = PublicationManager.getInstance()
+        if (publication.versionNew != null) {
+            publication.version = publication.versionNew
+        }
         publicationManager.addPublication(publication)
     }
 

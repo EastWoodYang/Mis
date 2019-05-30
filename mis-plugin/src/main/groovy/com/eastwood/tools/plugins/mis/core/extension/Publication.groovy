@@ -17,6 +17,8 @@ class Publication {
     String artifactId
     String version
 
+    String versionNew
+
     Dependencies dependencies
 
     Closure sourceFilter

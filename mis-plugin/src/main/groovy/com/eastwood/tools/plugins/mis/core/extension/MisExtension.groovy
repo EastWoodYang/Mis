@@ -19,6 +19,7 @@ class MisExtension {
     MisExtension(OnMisExtensionListener listener) {
         this.listener = listener
         this.publicationMap = new HashMap<>()
+        compileOptions = new CompileOptions()
     }
 
     void compileSdkVersion(int version) {
@@ -34,7 +35,6 @@ class MisExtension {
     }
 
     void compileOptions(Closure closure) {
-        compileOptions = new CompileOptions()
         ConfigureUtil.configure(closure, compileOptions)
     }
 

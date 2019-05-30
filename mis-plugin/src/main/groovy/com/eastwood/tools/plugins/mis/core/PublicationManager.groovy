@@ -18,11 +18,8 @@ class PublicationManager {
 
     private static PublicationManager sPublicationManager
 
-    boolean hasLoadManifest
-
     private File misDir
     private Map<String, Publication> publicationMap
-    private boolean executePublish
 
     static getInstance() {
         if (sPublicationManager == null) {
@@ -31,23 +28,16 @@ class PublicationManager {
         return sPublicationManager
     }
 
-    void loadManifest(Project rootProject, boolean executePublish) {
-        this.executePublish = executePublish
-        hasLoadManifest = true
+    void loadManifest(Project rootProject, File misDir) {
+        this.misDir = misDir
+
         publicationMap = new HashMap<>()
 
         rootProject.gradle.buildFinished {
-            hasLoadManifest = false
             if (it.failure != null) {
                 return
             }
-
             saveManifest()
-        }
-
-        misDir = new File(rootProject.rootDir, '.gradle/mis')
-        if (!misDir.exists()) {
-            return
         }
 
         File publicationManifest = new File(misDir, 'publicationManifest.xml')
@@ -66,7 +56,7 @@ class PublicationManager {
             publication.groupId = publicationElement.getAttribute("groupId")
             publication.artifactId = publicationElement.getAttribute("artifactId")
             publication.version = publicationElement.getAttribute("version")
-            if(publication.version == "") publication.version = null
+            if (publication.version == "") publication.version = null
             publication.invalid = Boolean.valueOf(publicationElement.getAttribute("invalid"))
 
             if (!publication.invalid) {
@@ -102,7 +92,7 @@ class PublicationManager {
         Element manifestElement = document.createElement("manifest")
         publicationMap.each {
             Publication publication = it.value
-            if((!executePublish && !publication.hit) || publication.invalid) return
+            if (!publication.hit || publication.invalid) return
 
             Element publicationElement = document.createElement('publication')
             publicationElement.setAttribute('project', publication.project)
@@ -139,7 +129,7 @@ class PublicationManager {
             return true
         }
 
-        if(publication.invalid != lastPublication.invalid) {
+        if (publication.invalid != lastPublication.invalid) {
             return true
         }
 
@@ -168,13 +158,11 @@ class PublicationManager {
     }
 
     void addPublication(Publication publication) {
-        def key = publication.groupId + "-" + publication.artifactId
-        publicationMap.put(key, publication)
+        publicationMap.put("${publication.groupId}-${publication.artifactId}", publication)
     }
 
     Publication getPublication(String groupId, String artifactId) {
-        def key = groupId + "-" + artifactId
-        return publicationMap.get(key)
+        return publicationMap.get("${groupId}-${artifactId}")
     }
 
     Publication getPublicationByKey(String key) {
@@ -195,22 +183,19 @@ class PublicationManager {
     }
 
     void hitPublication(Publication publication) {
-        def key = publication.groupId + "-" + publication.artifactId
-        Publication oldPublication = publicationMap.get(key)
-        if(oldPublication == null) return
+        Publication existsPublication = publicationMap.get("${publication.groupId}-${publication.artifactId}")
+        if (existsPublication == null) return
 
-        if(oldPublication.hit) {
-            validPublication(publication, oldPublication)
+        if (existsPublication.hit) {
+            validPublication(publication, existsPublication)
         } else {
-            oldPublication.hit = true
+            existsPublication.hit = true
         }
     }
 
-    private void validPublication(Publication publication, Publication oldPublication) {
-        if(oldPublication == null) return
-
-        if (publication.project != oldPublication.project) {
-            throw new GradleException("Already exists publication " + publication.groupId + ":" + publication.artifactId + " in project '${oldPublication.project}'.")
+    private void validPublication(Publication publication, Publication existsPublication) {
+        if (publication.project != existsPublication.project) {
+            throw new GradleException("Already exists publication " + existsPublication.groupId + ":" + existsPublication.artifactId + " in project '${existsPublication.project}'.")
         }
     }
 
