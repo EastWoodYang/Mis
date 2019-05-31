@@ -19,7 +19,10 @@ class PublicationManager {
     private static PublicationManager sPublicationManager
 
     private File misDir
-    private Map<String, Publication> publicationMap
+    private Map<String, Publication> publicationManifest
+
+    Digraph<String> dependencyGraph
+    Map<String, Publication> publicationDependencies
 
     static getInstance() {
         if (sPublicationManager == null) {
@@ -31,7 +34,9 @@ class PublicationManager {
     void loadManifest(Project rootProject, File misDir) {
         this.misDir = misDir
 
-        publicationMap = new HashMap<>()
+        publicationManifest = new HashMap<>()
+        dependencyGraph = new Digraph<String>()
+        publicationDependencies = new HashMap<>()
 
         rootProject.gradle.buildFinished {
             if (it.failure != null) {
@@ -76,7 +81,7 @@ class PublicationManager {
                 publication.misSourceSet = sourceSet
             }
 
-            publicationMap.put("${publication.groupId}-${publication.artifactId}", publication)
+            this.publicationManifest.put(publication.groupId + '-' + publication.artifactId, publication)
         }
 
     }
@@ -90,7 +95,7 @@ class PublicationManager {
         DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance()
         Document document = builderFactory.newDocumentBuilder().newDocument()
         Element manifestElement = document.createElement("manifest")
-        publicationMap.each {
+        this.publicationManifest.each {
             Publication publication = it.value
             if (!publication.hit || publication.invalid) return
 
@@ -123,8 +128,41 @@ class PublicationManager {
         transformer.transform(new DOMSource(manifestElement), new StreamResult(publicationManifest))
     }
 
+    void addDependencyGraph(Publication publication) {
+        def key = publication.groupId + '-' + publication.artifactId
+        publicationDependencies.put(key, publication)
+        dependencyGraph.add(key)
+        if (publication.dependencies != null) {
+            if (publication.dependencies.implementation != null) {
+                publication.dependencies.implementation.each {
+                    if (it instanceof String && it.startsWith('mis-')) {
+                        String[] gav = MisUtil.filterGAV(it.replace('mis-', ''))
+                        dependencyGraph.add(key, gav[0] + '-' + gav[1])
+                        if (!dependencyGraph.isDag()) {
+                            def misPublication = gav[0] + ':' + gav[1] + (gav[2] == null ? (":" + gav[2]) : "")
+                            throw new RuntimeException("Circular dependency between mis publication '${publication.groupId}:${publication.artifactId}' and '${misPublication}'.")
+                        }
+                    }
+                }
+            }
+
+            if (publication.dependencies.compileOnly != null) {
+                publication.dependencies.compileOnly.each {
+                    if (it instanceof String && it.startsWith('mis-')) {
+                        String[] gav = MisUtil.filterGAV(it.replace('mis-', ''))
+                        dependencyGraph.add(key, gav[0] + '-' + gav[1])
+                        if (!dependencyGraph.isDag()) {
+                            def misPublication = gav[0] + ':' + gav[1] + (gav[2] == null ? (":" + gav[2]) : "")
+                            throw new RuntimeException("Circular dependency between mis publication '${publication.groupId}:${publication.artifactId}' and '${misPublication}'.")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     boolean hasModified(Publication publication) {
-        Publication lastPublication = publicationMap.get("${publication.groupId}-${publication.artifactId}")
+        Publication lastPublication = publicationManifest.get(publication.groupId + '-' + publication.artifactId)
         if (lastPublication == null) {
             return true
         }
@@ -158,15 +196,15 @@ class PublicationManager {
     }
 
     void addPublication(Publication publication) {
-        publicationMap.put("${publication.groupId}-${publication.artifactId}", publication)
+        publicationManifest.put(publication.groupId + '-' + publication.artifactId, publication)
     }
 
     Publication getPublication(String groupId, String artifactId) {
-        return publicationMap.get("${groupId}-${artifactId}")
+        return publicationManifest.get(groupId + '-' + artifactId)
     }
 
     Publication getPublicationByKey(String key) {
-        return publicationMap.get(key)
+        return publicationManifest.get(key)
     }
 
     List<Publication> getPublicationByProject(Project project) {
@@ -174,7 +212,7 @@ class PublicationManager {
         String projectName = displayName.substring(displayName.indexOf("'") + 1, displayName.lastIndexOf("'"))
 
         List<Publication> publications = new ArrayList<>()
-        publicationMap.each {
+        publicationManifest.each {
             if (projectName == it.value.project) {
                 publications.add(it.value)
             }
@@ -183,7 +221,7 @@ class PublicationManager {
     }
 
     void hitPublication(Publication publication) {
-        Publication existsPublication = publicationMap.get("${publication.groupId}-${publication.artifactId}")
+        Publication existsPublication = publicationManifest.get(publication.groupId + '-' + publication.artifactId)
         if (existsPublication == null) return
 
         if (existsPublication.hit) {

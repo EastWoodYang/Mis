@@ -103,4 +103,36 @@ class MisUtil {
         }
     }
 
+    static String[] filterGAV(Object value) {
+        String groupId = null, artifactId = null, version = null
+        if (value instanceof String) {
+            String[] values = value.split(":")
+            if (values.length >= 3) {
+                groupId = values[0]
+                artifactId = values[1]
+                version = values[2]
+            } else if (values.length == 2) {
+                groupId = values[0]
+                artifactId = values[1]
+                version = null
+            }
+        } else if (value instanceof Map<String, ?>) {
+            groupId = value.groupId
+            artifactId = value.artifactId
+            version = value.version
+        }
+
+        if (version == "") {
+            version = null
+        }
+
+        if (groupId == null || artifactId == null) {
+            throw new IllegalArgumentException("'${value}' is illege argument of misPublication(), the following types/formats are supported:" +
+                    "\n  - String or CharSequence values, for example 'org.gradle:gradle-core:1.0'." +
+                    "\n  - Maps, for example [groupId: 'org.gradle', artifactId: 'gradle-core', version: '1.0'].")
+        }
+
+        return [groupId, artifactId, version]
+    }
+
 }
