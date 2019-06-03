@@ -14,17 +14,30 @@ MIS主要解决的问题是如何在一个模块内维护其对外暴露的接�
 buildscript {
     dependencies {
         ...
-        classpath 'com.eastwood.tools.plugins:mis:1.5.1'
+        classpath 'com.eastwood.tools.plugins:mis:2.0.0'
     }
 }
 ```
 
-在模块的build.gradle中添加**mis插件**：
+在根项目的build.gradle中添加mis插件的**相关配置**：
 ```
 ...
-// 需位于android和kotlin相关插件之后
+
 apply plugin: 'mis'
+
+mis {
+
+    compileSdkVersion 27
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+}
 ```
+* compileSdkVersion 同 android { compileSdkVersion ... }
+* compileOptions 同 android { compileOptions { ... } }
 
 #### 创建 mis 目录
 
@@ -38,7 +51,9 @@ apply plugin: 'mis'
 
 <img src='https://github.com/EastWoodYang/Mis/blob/master/picture/1.png'/>
 
-#### 配置mis相对应的publication
+#### 在模块目录内，创建单独的mis.gradle文件, 并在内声明mis对应的publication
+
+mis.gradle:
 ```
 mis {
     publications {
@@ -62,17 +77,13 @@ mis {
 
 * 在`dependencies`中可声明该mis Publication编译和运行时需用到的第三方库，仅支持`compileOnly`和`implementation`。如果mis文件夹下的类使用了kotlin语法，需要添加kotlin相关的依赖，比如'org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version'。
 
-####  发布至Maven
+####  发布mis publication 至 Maven
+在根项目的build.gradle中添加mis插件的**repositories配置**：
 ```
 mis {
-    publications {
-        main {
-            groupId 'com.eastwood.demo'
-            artifactId 'library-sdk'
-            version '1.0.0-SNAPSHOT'
-            ...
-        }
-    }
+
+    compileSdkVersion 27
+    ...
 
     repositories {
         maven {
@@ -86,9 +97,8 @@ mis {
     ...
 }
 ```
-* 发布时需设置`version`。
 
-* 发布时内部用到的插件是`maven-publish`，其中`repositories`相关设置请查阅[# Maven Publish Plugin](https://docs.gradle.org/current/userguide/publishing_maven.html#publishing_maven:repositories)
+* 发布用到的插件是`maven-publish`，其中`repositories`相关设置请查阅[# Maven Publish Plugin](https://docs.gradle.org/current/userguide/publishing_maven.html#publishing_maven:repositories)
 
 **Gradle Sync**后，打开Gradle Tasks View，选择**publishMis[...]PublicationToMavenRepository**执行发布任务。
 
