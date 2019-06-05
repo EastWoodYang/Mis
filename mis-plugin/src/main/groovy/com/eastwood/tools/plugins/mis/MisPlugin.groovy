@@ -57,8 +57,9 @@ class MisPlugin implements Plugin<Project> {
                 }
             })
 
-            project.childProjects.each {
-                Project childProject = it.value
+            project.allprojects.each {
+                if (it == project || it.childProjects.size() > 0) return
+                Project childProject = it
                 childProject.repositories {
                     flatDir {
                         dirs misDir.absolutePath
@@ -81,9 +82,11 @@ class MisPlugin implements Plugin<Project> {
                     return 'mis-' + gav[0] + ':' + gav[1] + ':' + gav[2]
                 }
 
-                project.childProjects.each {
-                    Project childProject = it.value
-                    def misScript = childProject.file('mis.gradle')
+                project.allprojects.each {
+                    if (it == project || it.childProjects.size() > 0) return
+                    Project childProject = it
+
+                    def misScript = new File(childProject.projectDir, 'mis.gradle')
                     if (misScript.exists()) {
                         misExtension.childProject = childProject
                         project.apply from: misScript
@@ -120,11 +123,16 @@ class MisPlugin implements Plugin<Project> {
 
         project.dependencies.metaClass.misPublication { Object value ->
             String[] gav = MisUtil.filterGAV(value)
-            return getPublication(gav)
+            return getPublication(gav[0], gav[1])
         }
 
+        List<Publication> publications = publicationManager.getPublicationByProject(project)
+        project.dependencies {
+            publications.each {
+                implementation getPublication(it.groupId, it.artifactId)
+            }
+        }
         if (project.gradle.startParameter.taskNames.isEmpty()) {
-            List<Publication> publications = publicationManager.getPublicationByProject(project)
             publications.each {
                 addPublicationDependencies(it)
             }
@@ -248,12 +256,21 @@ class MisPlugin implements Plugin<Project> {
         boolean hasModifiedSource = publicationManager.hasModified(publication)
 
         if (target.exists()) {
-            if (!hasModifiedSource) {
-                publication.invalid = false
-                publication.useLocal = true
-                publicationManager.addPublication(publication)
-                return
+            if (hasModifiedSource) {
+                def releaseJar = JarUtil.packJavaSourceJar(project, publication, androidJarPath, misExtension.compileOptions, true)
+                if (releaseJar == null) {
+                    publication.invalid = true
+                    publicationManager.addPublication(publication)
+                    if (target.exists()) {
+                        target.delete()
+                    }
+                    return
+                }
+                MisUtil.copyFile(releaseJar, target)
             }
+            publication.invalid = false
+            publication.useLocal = true
+            publicationManager.addPublication(publication)
         } else if (!hasModifiedSource) {
             Publication lastPublication = publicationManager.getPublication(publication.groupId, publication.artifactId)
             if (lastPublication.version != publication.version) {
@@ -264,31 +281,35 @@ class MisPlugin implements Plugin<Project> {
             publication.useLocal = false
             publicationManager.addPublication(publication)
             return
-        }
-
-        def releaseJar = JarUtil.packJavaSourceJar(project, publication, androidJarPath, misExtension.compileOptions, false)
-        if (releaseJar == null) {
-            publication.invalid = true
-            publicationManager.addPublication(publication)
-            if (target.exists()) {
-                target.delete()
-            }
-            return
-        }
-
-        boolean equals = JarUtil.compareMavenJar(project, publication, releaseJar.absolutePath)
-        if (equals) {
-            if (target.exists()) {
-                target.delete()
-            }
-            publication.useLocal = false
         } else {
-            releaseJar = JarUtil.packJavaSourceJar(project, publication, androidJarPath, misExtension.compileOptions, true)
-            MisUtil.copyFile(releaseJar, target)
-            publication.useLocal = true
+            def releaseJar = JarUtil.packJavaSourceJar(project, publication, androidJarPath, misExtension.compileOptions, false)
+            if (releaseJar == null) {
+                publication.invalid = true
+                publicationManager.addPublication(publication)
+                if (target.exists()) {
+                    target.delete()
+                }
+                return
+            }
+
+            Publication lastPublication = publicationManager.getPublication(publication.groupId, publication.artifactId)
+            if (lastPublication == null) {
+                lastPublication = publication
+            }
+            boolean equals = JarUtil.compareMavenJar(project, lastPublication, releaseJar.absolutePath)
+            if (equals) {
+                if (target.exists()) {
+                    target.delete()
+                }
+                publication.useLocal = false
+            } else {
+                releaseJar = JarUtil.packJavaSourceJar(project, publication, androidJarPath, misExtension.compileOptions, true)
+                MisUtil.copyFile(releaseJar, target)
+                publication.useLocal = true
+            }
+            publication.invalid = false
+            publicationManager.addPublication(publication)
         }
-        publication.invalid = false
-        publicationManager.addPublication(publication)
     }
 
     void initPublication(Project project, Publication publication) {
@@ -302,9 +323,9 @@ class MisPlugin implements Plugin<Project> {
         SourceSet misSourceSet = new SourceSet()
         def misDir
         if (publication.sourceSetName.contains('/')) {
-            misDir = project.file(publication.sourceSetName + '/mis/')
+            misDir = new File(project.projectDir, publication.sourceSetName + '/mis/')
         } else {
-            misDir = project.file('src/' + publication.sourceSetName + '/mis/')
+            misDir = new File(project.projectDir, 'src/' + publication.sourceSetName + '/mis/')
         }
         misSourceSet.path = misDir.absolutePath
         misSourceSet.lastModifiedSourceFile = new HashMap<>()
@@ -321,8 +342,8 @@ class MisPlugin implements Plugin<Project> {
         publication.invalid = misSourceSet.lastModifiedSourceFile.isEmpty()
     }
 
-    def getPublication(String[] gav) {
-        Publication publication = publicationManager.getPublication(gav[0], gav[1])
+    def getPublication(String groupId, String artifactId) {
+        Publication publication = publicationManager.getPublication(groupId, artifactId)
         if (publication != null) {
             if (publication.invalid) {
                 return []
