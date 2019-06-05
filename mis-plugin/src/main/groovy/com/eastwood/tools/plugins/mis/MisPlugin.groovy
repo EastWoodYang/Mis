@@ -58,7 +58,7 @@ class MisPlugin implements Plugin<Project> {
             })
 
             project.allprojects.each {
-                if (it == project || it.childProjects.size() > 0) return
+                if (it == project) return
                 Project childProject = it
                 childProject.repositories {
                     flatDir {
@@ -83,9 +83,8 @@ class MisPlugin implements Plugin<Project> {
                 }
 
                 project.allprojects.each {
-                    if (it == project || it.childProjects.size() > 0) return
+                    if (it == project) return
                     Project childProject = it
-
                     def misScript = new File(childProject.projectDir, 'mis.gradle')
                     if (misScript.exists()) {
                         misExtension.childProject = childProject
