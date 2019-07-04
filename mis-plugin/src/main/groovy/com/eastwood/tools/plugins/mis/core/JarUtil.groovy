@@ -94,7 +94,10 @@ class JarUtil {
                                               List<String> classPath,
                                               CompileOptions compileOptions,
                                               boolean vars) {
-
+        def classpathSeparator = ";"
+        if (!System.properties['os.name'].toLowerCase().contains('windows')) {
+            classpathSeparator = ":"
+        }
 
         boolean keepParameters = vars && Jvm.current().javaVersion >= JavaVersion.VERSION_1_8
         List<String> javaFiles = new ArrayList<>()
@@ -137,7 +140,7 @@ class JarUtil {
 
             if (classPath.size() > 0) {
                 args.add('-classpath')
-                args.add(classPath.join(";"))
+                args.add(classPath.join(classpathSeparator))
             }
 
             ExitCode exitCode = compiler.exec(System.out, (String[]) args.toArray())
@@ -151,10 +154,6 @@ class JarUtil {
         }
 
         if (!javaFiles.isEmpty()) {
-            def classpathSeparator = ";"
-            if (!System.properties['os.name'].toLowerCase().contains('windows')) {
-                classpathSeparator = ":"
-            }
             def command = "javac " + (keepParameters ? "-parameters" : "") + " -d . -encoding UTF-8 -target " + compileOptions.targetCompatibility.toString() + " -source " + compileOptions.sourceCompatibility.toString() + (classPath.size() > 0 ? (" -classpath " + classPath.join(classpathSeparator) + " ") : "") + javaFiles.join(' ')
             def p = (command).execute(null, classesDir)
 
