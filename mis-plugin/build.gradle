@@ -14,47 +14,39 @@ dependencies {
     compile 'org.jetbrains.kotlin:kotlin-compiler-embeddable:1.3.10'
 }
 
-apply from: './upload.gradle'
+apply plugin: 'maven'
 
-uploadNexus({
-    groupId = 'com.winwin.beauty.tools.plugins'
-    artifactId = 'mis'
-    version = '2.0.1'
-})
+def groupId = 'com.eastwood.tools.plugins'
+def artifactId = 'mis-component'
+def version = '1.0.0'
 
-//apply plugin: 'maven'
-//
-//def groupId = 'com.eastwood.tools.plugins'
-//def artifactId = 'mis'
-//def version = '2.0.2'
-//
-//def localReleaseDest = "${buildDir}/release/${version}"
-//
-//uploadArchives {
-//    repositories {
-//        mavenDeployer {
-//            pom.groupId = groupId
-//            pom.artifactId = artifactId
-//            pom.version = version
-//            // Add other pom properties here if you want (developer details / licenses)
-//            repository(url: "file://${localReleaseDest}")
-//        }
-//    }
-//}
-//
-//
-//task zipRelease(type: Zip) {
-//    from localReleaseDest
-//    destinationDir buildDir
-//    archiveName "release-${version}.zip"
-//}
-//
-//task generateRelease {
-//    doLast {
-//        println "Release ${version} can be found at ${localReleaseDest}/"
-//        println "Release ${version} zipped can be found ${buildDir}/release-${version}.zip"
-//    }
-//}
-//
-//generateRelease.dependsOn(uploadArchives)
-//generateRelease.dependsOn(zipRelease)
+def localReleaseDest = "${buildDir}/release/${version}"
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            pom.groupId = groupId
+            pom.artifactId = artifactId
+            pom.version = version
+            // Add other pom properties here if you want (developer details / licenses)
+            repository(url: "file://${localReleaseDest}")
+        }
+    }
+}
+
+
+task zipRelease(type: Zip) {
+    from localReleaseDest
+    destinationDir buildDir
+    archiveName "release-${version}.zip"
+}
+
+task generateRelease {
+    doLast {
+        println "Release ${version} can be found at ${localReleaseDest}/"
+        println "Release ${version} zipped can be found ${buildDir}/release-${version}.zip"
+    }
+}
+
+generateRelease.dependsOn(uploadArchives)
+generateRelease.dependsOn(zipRelease)
