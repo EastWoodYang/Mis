@@ -11,22 +11,21 @@ dependencies {
     compile gradleApi()
     compile localGroovy()
     compile 'com.android.tools.build:gradle:3.0.0'
-    compile 'org.jetbrains.kotlin:kotlin-compiler-embeddable:1.3.10'
 }
 
 apply from: './upload.gradle'
 
 uploadNexus({
     groupId = 'com.winwin.beauty.tools.plugins'
-    artifactId = 'mis'
-    version = '2.0.1'
+    artifactId = 'mis-component'
+    version = '1.0.0'
 })
 
 //apply plugin: 'maven'
 //
 //def groupId = 'com.eastwood.tools.plugins'
-//def artifactId = 'mis'
-//def version = '2.0.2'
+//def artifactId = 'mis-component'
+//def version = '1.0.0'
 //
 //def localReleaseDest = "${buildDir}/release/${version}"
 //

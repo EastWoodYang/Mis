@@ -128,7 +128,7 @@ class MisPlugin implements Plugin<Project> {
         List<Publication> publications = publicationManager.getPublicationByProject(project)
         project.dependencies {
             publications.each {
-                implementation getPublication(it.groupId, it.artifactId)
+                api getPublication(it.groupId, it.artifactId)
             }
         }
         if (project.gradle.startParameter.taskNames.isEmpty()) {

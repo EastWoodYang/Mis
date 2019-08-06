@@ -1,0 +1,11 @@
+misComponent {
+
+    library {
+
+        // or
+
+        sdk 'com.eastwood.demo:library-sdk'
+        impl ':library'
+    }
+
+}

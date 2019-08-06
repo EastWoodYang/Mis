@@ -1,0 +1,69 @@
+import org.gradle.util.ConfigureUtil
+
+ext {
+    uploadNexus = { Closure configureClosure ->
+        UploadConfig config = new UploadConfig()
+        ConfigureUtil.configure(configureClosure, config);
+        def tip = 'you should add configuration:\nuploadNexus {\ngroupId = ...\nartifactId = ...\nversion = ...\n}'
+        if(config.groupId == null) {
+            throw new IllegalArgumentException("uploadNexus GAV option of version is not set yet.\n" + tip)
+        } else if(config.artifactId == null) {
+            throw new IllegalArgumentException("uploadNexus GAV option of artifactId is not set yet.\n" + tip)
+        } else if(config.version == null) {
+            throw new IllegalArgumentException("uploadNexus GAV option of version is not set yet.\n" + tip)
+        }
+        def snapshot = config.version.endsWith('SNAPSHOT')
+
+        apply plugin: 'maven'
+
+        def ACCOUNT = 'admin'
+        def PASSWORD = 'yylc8888'
+        def MAVEN_LOCAL_PATH_DEV = 'http://10.100.5.141:8081/content/repositories/beauty_android_dev/'
+        def MAVEN_LOCAL_PATH_RELEASE = 'http://10.100.5.141:8081/content/repositories/beauty_android_release/'
+
+        //脚本：将Lib打成aar包上传至maven私有库
+        uploadArchives {
+            repositories {
+                mavenDeployer {
+                    repository(url: (snapshot ? MAVEN_LOCAL_PATH_DEV : MAVEN_LOCAL_PATH_RELEASE)) {
+                        authentication(userName: ACCOUNT, password: PASSWORD)
+                    }
+                    pom.project {
+                        groupId config.groupId
+                        artifactId config.artifactId
+                        version config.version
+                        packaging 'jar'
+
+                        licenses {
+                            license {
+                                name 'The Apache Software License, Version 2.0'
+                                url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+}
+
+class UploadConfig {
+
+    def groupId
+    def artifactId
+    def version
+
+    String groupId(String groupId) {
+        this.groupId = groupId
+    }
+
+    String artifactId(String artifactId) {
+        this.artifactId = artifactId
+    }
+
+    String version(String version) {
+        this.version = version
+    }
+
+}
