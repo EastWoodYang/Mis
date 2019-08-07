@@ -24,11 +24,6 @@ class MisComponentPlugin implements Plugin<Project> {
                 misComponents = misComponentExtension.getMisComponents()
             }
 
-            def misComponentScript = new File(project.rootDir, 'misComponent.gradle')
-            if (misComponentScript.exists()) {
-                project.apply from: 'misComponent.gradle'
-            }
-
             project.allprojects.each {
                 if (it == project) return
                 Project childProject = it
@@ -43,7 +38,7 @@ class MisComponentPlugin implements Plugin<Project> {
         }
 
         project.dependencies.metaClass.misComponent { String value ->
-            if (!misComponents.containsKey(value)) return null
+            if (misComponents == null || !misComponents.containsKey(value)) return []
 
             MisComponent misComponent = misComponents.get(value)
             if (project.gradle.startParameter.taskNames.isEmpty()) {

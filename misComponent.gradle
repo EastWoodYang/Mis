@@ -1,11 +1,28 @@
 misComponent {
 
     library {
-
-        // or
-
         sdk 'com.eastwood.demo:library-sdk'
         impl ':library'
+    }
+
+    kotlin {
+        sdk 'com.eastwood.demo:kotlin-sdk'
+        impl ':kotlin'
+    }
+
+    microModuleMain {
+        sdk 'com.eastwood.demo:module-main-sdk'
+        impl ':micro-module'
+    }
+
+    microModuleCommon {
+        sdk 'com.eastwood.demo:module-common-sdk'
+        impl ':micro-module'
+    }
+
+    microModuleKotlin {
+        sdk 'com.eastwood.demo:module-kotlin-sdk'
+        impl ':micro-module'
     }
 
 }
