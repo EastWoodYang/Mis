@@ -373,7 +373,7 @@ class MisPlugin implements Plugin<Project> {
     }
 
     void createPublishTask(Publication publication) {
-        def taskName = 'compileMis[' + publication.artifactId + ']Source'
+        def taskName = 'compileMis' + publication.artifactId.capitalize() + 'Source'
         def compileTask = project.getTasks().findByName(taskName)
         if (compileTask == null) {
             compileTask = project.getTasks().create(taskName, CompileMisTask.class)
@@ -381,7 +381,7 @@ class MisPlugin implements Plugin<Project> {
             compileTask.dependsOn 'clean'
         }
 
-        def publicationName = 'Mis[' + publication.artifactId + ']'
+        def publicationName = 'Mis' + publication.artifactId.capitalize()
         String publishTaskNamePrefix = "publish${publicationName}PublicationTo"
         project.tasks.whenTaskAdded {
             if (it.name.startsWith(publishTaskNamePrefix)) {

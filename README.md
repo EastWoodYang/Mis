@@ -14,7 +14,7 @@ MIS主要解决的问题是如何在一个模块内维护其对外暴露的接�
 buildscript {
     dependencies {
         ...
-        classpath 'com.eastwood.tools.plugins:mis:2.0.2'
+        classpath 'com.eastwood.tools.plugins:mis:2.0.3'
     }
 }
 ```
@@ -100,11 +100,11 @@ mis {
 
 * 发布用到的插件是`maven-publish`，其中`repositories`相关设置请查阅[# Maven Publish Plugin](https://docs.gradle.org/current/userguide/publishing_maven.html#publishing_maven:repositories)
 
-**Gradle Sync**后，打开Gradle Tasks View，选择**publishMis[...]PublicationToMavenRepository**执行发布任务。
+**Gradle Sync**后，打开Gradle Tasks View，选择**publishMis...PublicationToMavenRepository**执行发布任务。
 
 <img src='https://github.com/EastWoodYang/Mis/blob/master/picture/3.png'/>
 
-其中publishMis[...]PublicationToMavenLocal 是发布至本地maven。如果使用本地maven，请将`mavenLocal()`添加至根项目的build.gradle中，比如：
+其中publishMis...PublicationToMavenLocal 是发布至本地maven。如果使用本地maven，请将`mavenLocal()`添加至根项目的build.gradle中，比如：
 ```
 allprojects {
     repositories {
