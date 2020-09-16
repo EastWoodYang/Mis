@@ -216,6 +216,8 @@ mis {
 ```
 这里`misPublication`的作用是，如果所依赖的mis publication也在当前项目，那么与其所提供jar包的方式保持一致。
 
+## Question or Idea
+有问题或想法可以直接加我微信: EastWoodYang
 
 ## License
 
