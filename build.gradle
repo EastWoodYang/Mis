@@ -3,8 +3,8 @@
 buildscript {
     ext.kotlin_version = '1.3.10'
     repositories {
-        google()
         jcenter()
+        google()
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:3.3.0'
@@ -17,7 +17,7 @@ buildscript {
         classpath 'com.eastwood.tools.plugins:auto-inject:1.0.3'
 
         // mis
-        classpath 'com.eastwood.tools.plugins:mis:2.0.3'
+        classpath 'com.eastwood.tools.plugins:mis-plugin'
 
         // mis for dev
         // classpath 'com.eastwood.tools.plugins:mis-plugin'

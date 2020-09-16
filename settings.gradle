@@ -1,4 +1,4 @@
-//includeBuild './mis-plugin'
+includeBuild './mis-plugin'
 include ':mis-core'
 
 include ':app', ':library', ':micro-module', ':kotlin'

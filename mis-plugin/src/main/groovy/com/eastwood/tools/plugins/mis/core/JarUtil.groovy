@@ -1,6 +1,5 @@
 package com.eastwood.tools.plugins.mis.core
 
-
 import com.eastwood.tools.plugins.mis.core.extension.CompileOptions
 import com.eastwood.tools.plugins.mis.core.extension.Publication
 import org.gradle.api.GradleException
@@ -11,7 +10,6 @@ import org.gradle.internal.jvm.Jvm
 import org.jetbrains.kotlin.cli.common.ExitCode
 import org.jetbrains.kotlin.cli.jvm.K2JVMCompiler
 
-import java.util.concurrent.TimeUnit
 import java.util.jar.JarEntry
 import java.util.jar.JarFile
 import java.util.zip.ZipFile
@@ -94,11 +92,6 @@ class JarUtil {
                                               List<String> classPath,
                                               CompileOptions compileOptions,
                                               boolean vars) {
-        def classpathSeparator = ";"
-        if (!System.properties['os.name'].toLowerCase().contains('windows')) {
-            classpathSeparator = ":"
-        }
-
         boolean keepParameters = vars && Jvm.current().javaVersion >= JavaVersion.VERSION_1_8
         List<String> javaFiles = new ArrayList<>()
         List<String> kotlinFiles = new ArrayList<>()
@@ -140,7 +133,7 @@ class JarUtil {
 
             if (classPath.size() > 0) {
                 args.add('-classpath')
-                args.add(classPath.join(classpathSeparator))
+                args.add(classPath.join(File.pathSeparator))
             }
 
             ExitCode exitCode = compiler.exec(System.out, (String[]) args.toArray())
@@ -154,16 +147,29 @@ class JarUtil {
         }
 
         if (!javaFiles.isEmpty()) {
-            def command = "javac " + (keepParameters ? "-parameters" : "") + " -d . -encoding UTF-8 -target " + compileOptions.targetCompatibility.toString() + " -source " + compileOptions.sourceCompatibility.toString() + (classPath.size() > 0 ? (" -classpath " + classPath.join(classpathSeparator) + " ") : "") + javaFiles.join(' ')
-            def p = (command).execute(null, classesDir)
+            LinkedList<String> paras = new LinkedList();
+            paras.add('javac')
+            paras.add('-parameters')
+            paras.add('-d')
+            paras.add(classesDir.getAbsolutePath())
+            paras.add('-encoding')
+            paras.add('UTF-8')
+            paras.add('-target')
+            paras.add(compileOptions.targetCompatibility.toString())
+            paras.add('-source')
+            paras.add(compileOptions.sourceCompatibility.toString())
 
-            def result = p.waitFor(30, TimeUnit.SECONDS)
-            if (!result) {
-                throw new GradleException("Timed out when compile mis java source to bytecode with command.\nExecute command:\n" + command)
-            }
+            paras.add('-classpath')
+            paras.add(classPath.join(File.pathSeparator))
+            paras.addAll(javaFiles);
 
-            if (p.exitValue() != 0) {
-                throw new GradleException("Failure to compile mis java source to bytecode: \n" + p.err.text + "\nExecute command:\n" + command)
+            String[] javacParameters = (String[]) paras.toArray(new String[paras.size()])
+
+            Runtime runtime = Runtime.getRuntime()
+            def p = runtime.exec(javacParameters, null, classesDir);
+            def result = p.waitFor()
+            if (result != 0) {
+                throw new GradleException("Failure to compile mis java source to bytecode: \n" + p.err.text + "\nExecute command:\n" + javacParameters)
             }
         }
 

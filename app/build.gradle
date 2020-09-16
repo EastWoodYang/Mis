@@ -28,7 +28,7 @@ dependencies {
     implementation project(':library')
 
     implementation misPublication('com.eastwood.demo:library-sdk')
-//    implementation misPublication('com.eastwood.demo:kotlin-sdk')
+    implementation misPublication('com.eastwood.demo:kotlin-sdk')
 //    implementation misPublication('com.eastwood.demo:module-main-sdk')
 //    implementation misPublication('com.eastwood.demo:module-common-sdk')
 //    implementation misPublication('com.eastwood.demo:module-kotlin-sdk')
