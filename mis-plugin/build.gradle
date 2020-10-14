@@ -18,7 +18,7 @@ apply plugin: 'maven'
 
 def groupId = 'com.eastwood.tools.plugins'
 def artifactId = 'mis'
-def version = '2.0.3'
+def version = '2.1.0'
 
 def localReleaseDest = "${buildDir}/release/${version}"
 
