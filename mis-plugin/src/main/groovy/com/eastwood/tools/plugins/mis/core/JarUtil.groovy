@@ -164,12 +164,9 @@ class JarUtil {
             paras.addAll(javaFiles);
 
             String[] javacParameters = (String[]) paras.toArray(new String[paras.size()])
-
-            Runtime runtime = Runtime.getRuntime()
-            def p = runtime.exec(javacParameters, null, classesDir);
-            def result = p.waitFor()
+            def result = RuntimeUtil.exec(javacParameters, null, classesDir)
             if (result != 0) {
-                throw new GradleException("Failure to compile mis java source to bytecode: \n" + p.err.text + "\nExecute command:\n" + javacParameters)
+                throw new GradleException("Failure to compile mis java source to bytecode.\n" + "\nExecute command:\n" + javacParameters)
             }
         }
 
